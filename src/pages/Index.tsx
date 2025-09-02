@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import SplashScreen from '../components/SplashScreen';
-import MapView from '../components/MapView';
+import GoogleMapView from '../components/GoogleMapView';
 import SearchBar from '../components/SearchBar';
 import BottomNav from '../components/BottomNav';
 import RouteCard from '../components/RouteCard';
@@ -38,7 +38,7 @@ const Index = () => {
             
             {/* Map view */}
             <div className="flex-1">
-              <MapView />
+              <GoogleMapView />
             </div>
           </div>
         );
