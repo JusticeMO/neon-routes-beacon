@@ -52,6 +52,18 @@ export default {
 					DEFAULT: 'hsl(var(--card))',
 					foreground: 'hsl(var(--card-foreground))'
 				},
+				// BEACON neon route colors
+				neon: {
+					blue: 'hsl(var(--neon-blue))',
+					green: 'hsl(var(--neon-green))',
+					orange: 'hsl(var(--neon-orange))',
+					purple: 'hsl(var(--neon-purple))'
+				},
+				// Status colors
+				success: 'hsl(var(--success))',
+				warning: 'hsl(var(--warning))',
+				// Glassmorphism
+				glass: 'hsl(var(--glass))',
 				sidebar: {
 					DEFAULT: 'hsl(var(--sidebar-background))',
 					foreground: 'hsl(var(--sidebar-foreground))',
@@ -67,6 +79,14 @@ export default {
 				lg: 'var(--radius)',
 				md: 'calc(var(--radius) - 2px)',
 				sm: 'calc(var(--radius) - 4px)'
+			},
+			backdropBlur: {
+				xs: '2px'
+			},
+			boxShadow: {
+				'glow-blue': 'var(--glow-blue)',
+				'glow-green': 'var(--glow-green)',
+				'glow-orange': 'var(--glow-orange)'
 			},
 			keyframes: {
 				'accordion-down': {
@@ -84,11 +104,35 @@ export default {
 					to: {
 						height: '0'
 					}
+				},
+				shimmer: {
+					'0%': { transform: 'translateX(-100%)' },
+					'100%': { transform: 'translateX(100%)' }
+				},
+				'tesla-pulse': {
+					'0%, 100%': { opacity: '1', transform: 'scaleY(1)' },
+					'50%': { opacity: '0.5', transform: 'scaleY(0.8)' }
+				},
+				'glow-pulse': {
+					'0%, 100%': { 
+						boxShadow: '0 0 5px hsl(var(--primary) / 0.5)'
+					},
+					'50%': { 
+						boxShadow: '0 0 20px hsl(var(--primary) / 0.8), 0 0 30px hsl(var(--primary) / 0.5)'
+					}
+				},
+				'circuit-draw': {
+					'0%': { strokeDashoffset: '1000' },
+					'100%': { strokeDashoffset: '0' }
 				}
 			},
 			animation: {
 				'accordion-down': 'accordion-down 0.2s ease-out',
-				'accordion-up': 'accordion-up 0.2s ease-out'
+				'accordion-up': 'accordion-up 0.2s ease-out',
+				shimmer: 'shimmer 2s infinite',
+				'tesla-pulse': 'tesla-pulse 1.5s ease-in-out infinite',
+				'glow-pulse': 'glow-pulse 2s ease-in-out infinite',
+				'circuit-draw': 'circuit-draw 3s ease-out forwards'
 			}
 		}
 	},
