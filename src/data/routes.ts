@@ -127,23 +127,25 @@ export const nairobiRoutes: Route[] = [
     number: '108',
     name: 'CBD → Westlands',
     color: '#8B5CF6', // violet
+    stops: [
+      { name: 'University Way', lat: -1.2840, lng: 36.8220 },
+      { name: 'Uhuru Highway', lat: -1.2810, lng: 36.8180 },
+      { name: 'Museum Hill', lat: -1.2775, lng: 36.8145 },
+      { name: 'Chiromo', lat: -1.2735, lng: 36.8115 },
+      { name: 'Westlands', lat: -1.2665, lng: 36.8045 },
+      { name: 'Sarit Centre', lat: -1.2635, lng: 36.8005 },
+    ],
     path: [
-      // Start at CBD / University Way
       { lat: -1.2840, lng: 36.8220 },
       { lat: -1.2825, lng: 36.8200 },
-      // Uhuru Highway north
       { lat: -1.2810, lng: 36.8180 },
       { lat: -1.2795, lng: 36.8165 },
-      // Museum Hill
       { lat: -1.2775, lng: 36.8145 },
       { lat: -1.2755, lng: 36.8130 },
-      // Chiromo Road
       { lat: -1.2735, lng: 36.8115 },
       { lat: -1.2715, lng: 36.8100 },
-      // Waiyaki Way approach
       { lat: -1.2695, lng: 36.8085 },
       { lat: -1.2680, lng: 36.8065 },
-      // Westlands
       { lat: -1.2665, lng: 36.8045 },
       { lat: -1.2650, lng: 36.8025 },
       { lat: -1.2635, lng: 36.8005 },
