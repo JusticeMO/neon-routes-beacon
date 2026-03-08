@@ -1,11 +1,10 @@
-import { useEffect, useState, useMemo } from 'react';
-import { Plus, Minus, RotateCcw, Eye, EyeOff } from 'lucide-react';
+import { useEffect, useState, useMemo, useCallback } from 'react';
+import { Plus, Minus, Navigation } from 'lucide-react';
 import { Button } from './ui/button';
 import { MapContainer, TileLayer, Polyline, CircleMarker, useMap, Tooltip } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
-import { nairobiRoutes } from '@/data/routes';
+import { nairobiRoutes, type Route } from '@/data/routes';
 import { useTheme } from '@/contexts/ThemeContext';
-import ThemeToggle from './ThemeToggle';
 
 interface Bus {
   id: number;
@@ -15,24 +14,28 @@ interface Bus {
   progress: number;
 }
 
+interface GoogleMapViewProps {
+  selectedRoute: Route | null;
+}
+
 const TILE_URLS = {
   bright: 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
   dark: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
   live: 'https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}{r}.png',
 };
 
-const MapControls = ({ onReset }: { onReset: () => void }) => {
+const MapControls = () => {
   const map = useMap();
   return (
-    <div className="absolute bottom-24 right-4 z-[1000] flex flex-col space-y-2">
+    <div className="absolute bottom-32 right-4 z-[1000] flex flex-col space-y-2">
       <Button variant="outline" size="icon" onClick={() => map.zoomIn()} className="bg-card/90 backdrop-blur-md border-border/50 hover:bg-card text-foreground shadow-lg rounded-full w-10 h-10">
         <Plus className="w-4 h-4" />
       </Button>
       <Button variant="outline" size="icon" onClick={() => map.zoomOut()} className="bg-card/90 backdrop-blur-md border-border/50 hover:bg-card text-foreground shadow-lg rounded-full w-10 h-10">
         <Minus className="w-4 h-4" />
       </Button>
-      <Button variant="outline" size="icon" onClick={() => { map.setView([-1.2864, 36.8172], 14); onReset(); }} className="bg-card/90 backdrop-blur-md border-border/50 hover:bg-card text-foreground shadow-lg rounded-full w-10 h-10">
-        <RotateCcw className="w-4 h-4" />
+      <Button variant="outline" size="icon" onClick={() => map.setView([-1.2864, 36.8172], 14)} className="bg-card/90 backdrop-blur-md border-border/50 hover:bg-card text-foreground shadow-lg rounded-full w-10 h-10">
+        <Navigation className="w-4 h-4" />
       </Button>
     </div>
   );
@@ -43,29 +46,26 @@ const DynamicTileLayer = () => {
   return <TileLayer key={theme} url={TILE_URLS[theme]} attribution='&copy; OpenStreetMap' />;
 };
 
-const GoogleMapView = () => {
+// Auto-fit map to selected route
+const FitToRoute = ({ route }: { route: Route | null }) => {
+  const map = useMap();
+  useEffect(() => {
+    if (!route) {
+      map.setView([-1.2864, 36.8172], 14);
+      return;
+    }
+    const lats = route.path.map(p => p.lat);
+    const lngs = route.path.map(p => p.lng);
+    map.fitBounds(
+      [[Math.min(...lats), Math.min(...lngs)], [Math.max(...lats), Math.max(...lngs)]],
+      { padding: [50, 50], maxZoom: 15 }
+    );
+  }, [route, map]);
+  return null;
+};
+
+const GoogleMapView = ({ selectedRoute }: GoogleMapViewProps) => {
   const { theme } = useTheme();
-  // Track which routes are visible — all on by default
-  const [activeRoutes, setActiveRoutes] = useState<Set<string>>(
-    () => new Set(nairobiRoutes.map(r => r.number))
-  );
-
-  const toggleRoute = (routeNumber: string) => {
-    setActiveRoutes(prev => {
-      const next = new Set(prev);
-      if (next.has(routeNumber)) {
-        next.delete(routeNumber);
-      } else {
-        next.add(routeNumber);
-      }
-      return next;
-    });
-  };
-
-  const visibleRoutes = useMemo(
-    () => nairobiRoutes.filter(r => activeRoutes.has(r.number)),
-    [activeRoutes]
-  );
 
   const [buses, setBuses] = useState<Bus[]>(() =>
     nairobiRoutes.map((route, i) => ({
@@ -93,14 +93,7 @@ const GoogleMapView = () => {
 
         if (next < route.path.length) {
           const s = route.path[idx], e = route.path[next];
-          return {
-            ...bus,
-            progress: p,
-            position: {
-              lat: s.lat + (e.lat - s.lat) * t,
-              lng: s.lng + (e.lng - s.lng) * t,
-            }
-          };
+          return { ...bus, progress: p, position: { lat: s.lat + (e.lat - s.lat) * t, lng: s.lng + (e.lng - s.lng) * t } };
         }
         return bus;
       }));
@@ -111,16 +104,37 @@ const GoogleMapView = () => {
   const isDark = theme === 'dark' || theme === 'live';
   const glowIntensity = theme === 'live' ? 0.25 : theme === 'dark' ? 0.15 : 0.08;
 
-  const routeLines = useMemo(() => visibleRoutes.flatMap(route => {
-    const path = route.path.map(p => [p.lat, p.lng] as [number, number]);
-    return [
-      <Polyline key={`${route.id}-glow`} positions={path} pathOptions={{ color: route.color, weight: theme === 'live' ? 20 : 14, opacity: glowIntensity }} />,
-      <Polyline key={`${route.id}-mid`} positions={path} pathOptions={{ color: route.color, weight: theme === 'live' ? 10 : 7, opacity: isDark ? 0.5 : 0.35 }} />,
-      <Polyline key={`${route.id}-core`} positions={path} pathOptions={{ color: route.color, weight: 3, opacity: 1 }} />,
-    ];
-  }), [visibleRoutes, theme, isDark, glowIntensity]);
+  // Show selected route prominently, others dimmed; if none selected show all dimmed
+  const routeLines = useMemo(() => {
+    const routesToShow = selectedRoute ? [selectedRoute] : nairobiRoutes;
+    const dimRoutes = selectedRoute ? nairobiRoutes.filter(r => r.id !== selectedRoute.id) : [];
 
-  const visibleBuses = buses.filter(b => activeRoutes.has(b.route));
+    return [
+      // Dimmed background routes
+      ...dimRoutes.flatMap(route => {
+        const path = route.path.map(p => [p.lat, p.lng] as [number, number]);
+        return [
+          <Polyline key={`${route.id}-dim`} positions={path} pathOptions={{ color: route.color, weight: 3, opacity: 0.15 }} />,
+        ];
+      }),
+      // Active routes
+      ...routesToShow.flatMap(route => {
+        const path = route.path.map(p => [p.lat, p.lng] as [number, number]);
+        const isSelected = selectedRoute?.id === route.id;
+        return [
+          <Polyline key={`${route.id}-glow`} positions={path} pathOptions={{ color: route.color, weight: isSelected ? 22 : 14, opacity: isSelected ? glowIntensity * 1.5 : glowIntensity }} />,
+          <Polyline key={`${route.id}-mid`} positions={path} pathOptions={{ color: route.color, weight: isSelected ? 12 : 7, opacity: isDark ? 0.5 : 0.35 }} />,
+          <Polyline key={`${route.id}-core`} positions={path} pathOptions={{ color: route.color, weight: isSelected ? 4 : 3, opacity: 1 }} />,
+        ];
+      }),
+    ];
+  }, [selectedRoute, theme, isDark, glowIntensity]);
+
+  // Only show stops for selected route
+  const visibleStops = selectedRoute ? selectedRoute.stops : [];
+  const visibleBuses = selectedRoute
+    ? buses.filter(b => b.route === selectedRoute.number)
+    : buses;
 
   return (
     <div className="relative w-full h-full overflow-hidden">
@@ -133,31 +147,30 @@ const GoogleMapView = () => {
         style={{ background: isDark ? 'hsl(220, 15%, 6%)' : 'hsl(210, 20%, 96%)' }}
       >
         <DynamicTileLayer />
-        <MapControls onReset={() => {}} />
+        <FitToRoute route={selectedRoute} />
+        <MapControls />
         {routeLines}
 
-        {/* Bus stop markers — only for visible routes */}
-        {visibleRoutes.flatMap(route =>
-          route.stops.map((stop, i) => (
-            <CircleMarker
-              key={`stop-${route.id}-${i}`}
-              center={[stop.lat, stop.lng]}
-              radius={4}
-              pathOptions={{
-                color: route.color,
-                weight: 1.5,
-                fillColor: isDark ? '#0f0f1a' : '#ffffff',
-                fillOpacity: 1,
-                opacity: 0.9,
-              }}
-            >
-              <Tooltip className="neon-tooltip" direction="top" offset={[0, -6]}>
-                {stop.name}
-              </Tooltip>
-            </CircleMarker>
-          ))
-        )}
+        {/* Bus stop markers */}
+        {visibleStops.map((stop, i) => (
+          <CircleMarker
+            key={`stop-${selectedRoute!.id}-${i}`}
+            center={[stop.lat, stop.lng]}
+            radius={5}
+            pathOptions={{
+              color: selectedRoute!.color,
+              weight: 2,
+              fillColor: isDark ? '#0f0f1a' : '#ffffff',
+              fillOpacity: 1,
+            }}
+          >
+            <Tooltip permanent className="neon-tooltip" direction="top" offset={[0, -8]}>
+              {stop.name}
+            </Tooltip>
+          </CircleMarker>
+        ))}
 
+        {/* Bus markers */}
         {visibleBuses.map(bus => {
           const route = nairobiRoutes.find(r => r.number === bus.route);
           const color = route?.color || '#3B82F6';
@@ -165,7 +178,7 @@ const GoogleMapView = () => {
             <CircleMarker
               key={bus.id}
               center={[bus.position.lat, bus.position.lng]}
-              radius={7}
+              radius={selectedRoute ? 9 : 6}
               pathOptions={{
                 color: isDark ? '#ffffff' : '#1a1a2e',
                 weight: 2.5,
@@ -173,65 +186,17 @@ const GoogleMapView = () => {
                 fillOpacity: 1,
               }}
             >
-              <Tooltip permanent className="neon-tooltip">
-                Route {bus.route}
-              </Tooltip>
+              {selectedRoute && (
+                <Tooltip permanent className="neon-tooltip">
+                  🚌 Route {bus.route}
+                </Tooltip>
+              )}
             </CircleMarker>
           );
         })}
       </MapContainer>
 
-      {/* Theme toggle — top left */}
-      <div className="absolute top-4 left-4 z-[1000]">
-        <ThemeToggle />
-      </div>
-
-      {/* Route legend with toggles — top right */}
-      <div className="absolute top-4 right-4 z-[1000]">
-        <div className="bg-card/90 backdrop-blur-xl p-3 rounded-2xl border border-border/30 shadow-xl min-w-[160px]">
-          <h3 className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-2">Routes</h3>
-          <div className="space-y-1">
-            {nairobiRoutes.map(route => {
-              const isActive = activeRoutes.has(route.number);
-              return (
-                <button
-                  key={route.id}
-                  onClick={() => toggleRoute(route.number)}
-                  className={`
-                    flex items-center w-full space-x-2 px-2 py-1.5 rounded-lg transition-all duration-200
-                    ${isActive
-                      ? 'hover:bg-muted/30'
-                      : 'opacity-40 hover:opacity-60'
-                    }
-                  `}
-                >
-                  <div
-                    className="w-2.5 h-2.5 rounded-full flex-shrink-0 transition-all"
-                    style={{
-                      backgroundColor: route.color,
-                      boxShadow: isActive && isDark ? `0 0 6px ${route.color}60` : 'none',
-                    }}
-                  />
-                  <span className="text-xs font-medium flex-1 text-left">{route.name}</span>
-                  {isActive ? (
-                    <Eye className="w-3 h-3 text-muted-foreground flex-shrink-0" />
-                  ) : (
-                    <EyeOff className="w-3 h-3 text-muted-foreground flex-shrink-0" />
-                  )}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-      </div>
-
-      {/* Bottom status */}
-      <div className="absolute bottom-4 left-4 z-[1000]">
-        <div className="bg-card/80 backdrop-blur-md px-3 py-1.5 rounded-full border border-border/20 text-xs text-muted-foreground flex items-center gap-2">
-          <div className="w-2 h-2 rounded-full bg-accent animate-pulse" />
-          {activeRoutes.size} of {nairobiRoutes.length} routes active
-        </div>
-      </div>
+      {/* Map zoom controls are inside MapContainer */}
     </div>
   );
 };
