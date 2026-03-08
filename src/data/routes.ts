@@ -1,9 +1,16 @@
+export interface BusStop {
+  name: string;
+  lat: number;
+  lng: number;
+}
+
 export interface Route {
   id: number;
   number: string;
   name: string;
   color: string;
   path: { lat: number; lng: number }[];
+  stops: BusStop[];
 }
 
 // Realistic Nairobi bus routes following actual roads
