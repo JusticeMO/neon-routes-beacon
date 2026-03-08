@@ -20,29 +20,32 @@ export const nairobiRoutes: Route[] = [
     number: '46',
     name: 'CBD → Kawangware',
     color: '#3B82F6', // bright blue
+    stops: [
+      { name: 'Kencom', lat: -1.2864, lng: 36.8235 },
+      { name: 'Kenyatta Ave', lat: -1.2878, lng: 36.8185 },
+      { name: 'Uhuru Highway', lat: -1.2920, lng: 36.8155 },
+      { name: 'Ngong Rd Junction', lat: -1.2980, lng: 36.8105 },
+      { name: 'Prestige Plaza', lat: -1.3040, lng: 36.8045 },
+      { name: 'Dagoretti Corner', lat: -1.3100, lng: 36.7985 },
+      { name: 'Riruta', lat: -1.3150, lng: 36.7840 },
+      { name: 'Kawangware', lat: -1.3158, lng: 36.7720 },
+    ],
     path: [
-      // Start at Kencom/CBD
       { lat: -1.2864, lng: 36.8235 },
-      // Along Kenyatta Avenue
       { lat: -1.2870, lng: 36.8210 },
       { lat: -1.2878, lng: 36.8185 },
-      // Turn onto Uhuru Highway
       { lat: -1.2895, lng: 36.8165 },
       { lat: -1.2920, lng: 36.8155 },
-      // Along Ngong Road
       { lat: -1.2955, lng: 36.8130 },
       { lat: -1.2980, lng: 36.8105 },
       { lat: -1.3010, lng: 36.8075 },
       { lat: -1.3040, lng: 36.8045 },
-      // Ngong Rd continues
       { lat: -1.3075, lng: 36.8010 },
       { lat: -1.3100, lng: 36.7985 },
       { lat: -1.3125, lng: 36.7955 },
-      // Turn onto Kawangware Road
       { lat: -1.3140, lng: 36.7920 },
       { lat: -1.3145, lng: 36.7880 },
       { lat: -1.3150, lng: 36.7840 },
-      // Kawangware area
       { lat: -1.3155, lng: 36.7800 },
       { lat: -1.3160, lng: 36.7760 },
       { lat: -1.3158, lng: 36.7720 },
