@@ -1,24 +1,26 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import SplashScreen from '../components/SplashScreen';
 import GoogleMapView from '../components/GoogleMapView';
 import SearchBar from '../components/SearchBar';
 import BottomNav from '../components/BottomNav';
-import RouteCard from '../components/RouteCard';
+import RouteBottomSheet from '../components/RouteBottomSheet';
+import ThemeToggle from '../components/ThemeToggle';
+import { nairobiRoutes, type Route } from '@/data/routes';
+import { Clock, Users, MapPin, ChevronRight, Banknote, Bell, Shield, Star, Settings, HelpCircle } from 'lucide-react';
 
 const Index = () => {
   const [showSplash, setShowSplash] = useState(true);
   const [activeTab, setActiveTab] = useState('home');
+  const [selectedRoute, setSelectedRoute] = useState<Route | null>(null);
 
-  const routes = [
-    { id: 1, number: '46', name: 'CBD → Kawangware', color: 'neon-blue' as const, eta: '3 mins', load: 'few' as const, fare: 'KSh 60' },
-    { id: 2, number: '34', name: 'CBD → Kasarani', color: 'neon-green' as const, eta: '7 mins', load: 'full' as const, fare: 'KSh 80' },
-    { id: 3, number: '15', name: 'CBD → Karen', color: 'neon-orange' as const, eta: '12 mins', load: 'empty' as const, fare: 'KSh 100' },
-    { id: 4, number: '108', name: 'CBD → Westlands', color: 'neon-purple' as const, eta: '5 mins', load: 'few' as const, fare: 'KSh 50' },
-  ];
+  const handleRouteSelect = useCallback((routeNumber: string) => {
+    const route = nairobiRoutes.find(r => r.number === routeNumber);
+    if (route) setSelectedRoute(route);
+  }, []);
 
-  const handleRouteSelect = (route: any) => {
-    console.log('Selected route:', route);
-  };
+  const handleClearRoute = useCallback(() => {
+    setSelectedRoute(null);
+  }, []);
 
   if (showSplash) {
     return <SplashScreen onComplete={() => setShowSplash(false)} />;
@@ -29,113 +31,167 @@ const Index = () => {
       case 'home':
         return (
           <div className="relative h-full flex flex-col">
+            {/* Search bar */}
             <div className="absolute top-4 left-4 right-4 z-30">
-              <SearchBar />
+              <SearchBar
+                onRouteSelect={handleRouteSelect}
+                onClear={handleClearRoute}
+                selectedRouteName={selectedRoute?.name}
+              />
             </div>
+
+            {/* Theme toggle */}
+            <div className="absolute top-[72px] left-4 z-30">
+              <ThemeToggle />
+            </div>
+
+            {/* Map */}
             <div className="flex-1 relative" style={{ minHeight: 0 }}>
-              <GoogleMapView />
+              <GoogleMapView selectedRoute={selectedRoute} />
             </div>
+
+            {/* Route bottom sheet */}
+            {selectedRoute && (
+              <RouteBottomSheet route={selectedRoute} onClose={handleClearRoute} />
+            )}
           </div>
         );
-      
+
       case 'routes':
         return (
           <div className="p-4 space-y-3 pb-24 overflow-y-auto h-full">
-            <div className="text-center mb-6 pt-2">
-              <h2 className="text-2xl font-bold mb-1">Available Routes</h2>
-              <p className="text-muted-foreground text-sm">Live bus positions & ETAs</p>
+            <div className="pt-2 mb-5">
+              <h2 className="text-xl font-bold">Nearby Routes</h2>
+              <p className="text-muted-foreground text-sm mt-0.5">Tap a route to track it live</p>
             </div>
-            {routes.map(route => (
-              <RouteCard 
-                key={route.id} 
-                route={route} 
-                onSelect={handleRouteSelect}
-              />
-            ))}
+            {nairobiRoutes.map(route => {
+              const eta = ['3 min', '7 min', '12 min', '5 min'][route.id - 1];
+              const fare = ['KSh 60', 'KSh 80', 'KSh 100', 'KSh 50'][route.id - 1];
+              const seats = ['Few Seats', 'Full', 'Available', 'Few Seats'][route.id - 1];
+              const seatsColor = seats === 'Full' ? 'text-destructive' : seats === 'Available' ? 'text-accent' : 'text-warning';
+              return (
+                <button
+                  key={route.id}
+                  onClick={() => { handleRouteSelect(route.number); setActiveTab('home'); }}
+                  className="w-full bg-card rounded-2xl p-4 border border-border/30 shadow-sm hover:shadow-md transition-all text-left"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-12 h-12 rounded-xl flex items-center justify-center text-sm font-bold text-white shadow-md" style={{ backgroundColor: route.color }}>
+                      {route.number}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="font-semibold text-sm">{route.name}</div>
+                      <div className="flex items-center gap-3 mt-1">
+                        <span className="text-xs text-muted-foreground flex items-center gap-1">
+                          <Clock className="w-3 h-3" />{eta}
+                        </span>
+                        <span className="text-xs text-muted-foreground flex items-center gap-1">
+                          <Banknote className="w-3 h-3" />{fare}
+                        </span>
+                        <span className={`text-xs font-medium ${seatsColor}`}>{seats}</span>
+                      </div>
+                    </div>
+                    <ChevronRight className="w-4 h-4 text-muted-foreground" />
+                  </div>
+                </button>
+              );
+            })}
           </div>
         );
-      
+
       case 'alerts':
         return (
           <div className="p-4 pb-24 overflow-y-auto h-full">
-            <div className="text-center mb-6 pt-2">
-              <h2 className="text-2xl font-bold mb-1">Live Alerts</h2>
-              <p className="text-muted-foreground text-sm">Real-time traffic updates</p>
+            <div className="pt-2 mb-5">
+              <h2 className="text-xl font-bold">Alerts</h2>
+              <p className="text-muted-foreground text-sm mt-0.5">Service updates & traffic info</p>
             </div>
-            
             <div className="space-y-3">
-              <div className="bg-card rounded-2xl p-4 border border-border/30 border-l-4 border-l-warning shadow-lg">
-                <div className="flex items-start space-x-3">
-                  <div className="w-2.5 h-2.5 bg-warning rounded-full mt-1.5 animate-pulse" />
+              <div className="bg-card rounded-2xl p-4 border border-border/30 border-l-4 border-l-warning">
+                <div className="flex items-start gap-3">
+                  <div className="w-2 h-2 bg-warning rounded-full mt-1.5 animate-pulse flex-shrink-0" />
                   <div>
-                    <h3 className="font-semibold text-warning">Heavy Traffic</h3>
-                    <p className="text-sm text-muted-foreground mt-1">
-                      Kenyatta Avenue experiencing delays. Expect 10 min additional time.
-                    </p>
-                    <p className="text-xs text-muted-foreground/60 mt-2">2 mins ago</p>
+                    <h3 className="font-semibold text-sm text-warning">Heavy Traffic — Kenyatta Ave</h3>
+                    <p className="text-xs text-muted-foreground mt-1">Expect +10 min delays on Routes 46, 108</p>
+                    <p className="text-[10px] text-muted-foreground/60 mt-2">2 min ago</p>
                   </div>
                 </div>
               </div>
-              
-              <div className="bg-card rounded-2xl p-4 border border-border/30 border-l-4 border-l-destructive shadow-lg">
-                <div className="flex items-start space-x-3">
-                  <div className="w-2.5 h-2.5 bg-destructive rounded-full mt-1.5 animate-pulse" />
+              <div className="bg-card rounded-2xl p-4 border border-border/30 border-l-4 border-l-destructive">
+                <div className="flex items-start gap-3">
+                  <div className="w-2 h-2 bg-destructive rounded-full mt-1.5 animate-pulse flex-shrink-0" />
                   <div>
-                    <h3 className="font-semibold text-destructive">Service Disruption</h3>
-                    <p className="text-sm text-muted-foreground mt-1">
-                      Route 46 temporarily suspended due to roadworks at Globe Roundabout.
-                    </p>
-                    <p className="text-xs text-muted-foreground/60 mt-2">5 mins ago</p>
+                    <h3 className="font-semibold text-sm text-destructive">Route 46 Disruption</h3>
+                    <p className="text-xs text-muted-foreground mt-1">Roadworks at Globe Roundabout. Diversion via Ngong Rd.</p>
+                    <p className="text-[10px] text-muted-foreground/60 mt-2">15 min ago</p>
+                  </div>
+                </div>
+              </div>
+              <div className="bg-card rounded-2xl p-4 border border-border/30 border-l-4 border-l-accent">
+                <div className="flex items-start gap-3">
+                  <div className="w-2 h-2 bg-accent rounded-full mt-1.5 flex-shrink-0" />
+                  <div>
+                    <h3 className="font-semibold text-sm text-accent">New Route Added</h3>
+                    <p className="text-xs text-muted-foreground mt-1">Route 108 (CBD → Westlands) is now live with real-time tracking.</p>
+                    <p className="text-[10px] text-muted-foreground/60 mt-2">1 hour ago</p>
                   </div>
                 </div>
               </div>
             </div>
           </div>
         );
-      
+
       case 'profile':
         return (
           <div className="p-4 pb-24 overflow-y-auto h-full">
-            <div className="text-center mb-8 pt-2">
-              <div className="w-20 h-20 bg-primary/15 rounded-full mx-auto mb-4 flex items-center justify-center ring-2 ring-primary/30">
-                <span className="text-xl font-bold text-primary">JD</span>
+            <div className="pt-2 mb-6">
+              <div className="flex items-center gap-4">
+                <div className="w-14 h-14 bg-primary/15 rounded-full flex items-center justify-center ring-2 ring-primary/30">
+                  <span className="text-lg font-bold text-primary">JD</span>
+                </div>
+                <div>
+                  <h2 className="text-lg font-bold">John Doe</h2>
+                  <p className="text-xs text-muted-foreground">Nairobi Commuter</p>
+                </div>
               </div>
-              <h2 className="text-2xl font-bold">John Doe</h2>
-              <p className="text-muted-foreground text-sm">Regular Commuter</p>
             </div>
-            
-            <div className="space-y-3">
-              <div className="bg-card rounded-2xl p-5 border border-border/30 shadow-lg">
-                <h3 className="font-semibold mb-4 text-sm uppercase tracking-wider text-muted-foreground">Travel Stats</h3>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="text-center">
-                    <div className="text-3xl font-bold text-primary">47</div>
-                    <div className="text-xs text-muted-foreground mt-1">Trips This Month</div>
-                  </div>
-                  <div className="text-center">
-                    <div className="text-3xl font-bold text-accent">2,340</div>
-                    <div className="text-xs text-muted-foreground mt-1">Eco Points</div>
-                  </div>
-                </div>
+
+            {/* Stats row */}
+            <div className="grid grid-cols-3 gap-3 mb-5">
+              <div className="bg-card rounded-2xl p-3 text-center border border-border/30">
+                <div className="text-xl font-bold text-primary">47</div>
+                <div className="text-[10px] text-muted-foreground mt-0.5">Trips</div>
               </div>
-              
-              <div className="bg-card rounded-2xl p-5 border border-border/30 shadow-lg">
-                <h3 className="font-semibold mb-4 text-sm uppercase tracking-wider text-muted-foreground">Favorite Routes</h3>
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm">CBD → Kawangware</span>
-                    <span className="text-xs text-primary font-medium bg-primary/10 px-2 py-1 rounded-full">Route 46</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm">CBD → Westlands</span>
-                    <span className="text-xs text-primary font-medium bg-primary/10 px-2 py-1 rounded-full">Route 108</span>
-                  </div>
-                </div>
+              <div className="bg-card rounded-2xl p-3 text-center border border-border/30">
+                <div className="text-xl font-bold text-accent">2,340</div>
+                <div className="text-[10px] text-muted-foreground mt-0.5">Points</div>
               </div>
+              <div className="bg-card rounded-2xl p-3 text-center border border-border/30">
+                <div className="text-xl font-bold text-warning">KSh 4.2k</div>
+                <div className="text-[10px] text-muted-foreground mt-0.5">Saved</div>
+              </div>
+            </div>
+
+            {/* Menu items */}
+            <div className="bg-card rounded-2xl border border-border/30 divide-y divide-border/20">
+              {[
+                { icon: Star, label: 'Saved Routes', value: '2' },
+                { icon: Bell, label: 'Notifications', value: '' },
+                { icon: Shield, label: 'Safety', value: '' },
+                { icon: Settings, label: 'Settings', value: '' },
+                { icon: HelpCircle, label: 'Help & Support', value: '' },
+              ].map(({ icon: Icon, label, value }) => (
+                <button key={label} className="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-muted/20 transition-colors">
+                  <Icon className="w-4 h-4 text-muted-foreground" />
+                  <span className="flex-1 text-sm text-left">{label}</span>
+                  {value && <span className="text-xs text-muted-foreground bg-muted/30 px-2 py-0.5 rounded-full">{value}</span>}
+                  <ChevronRight className="w-4 h-4 text-muted-foreground/50" />
+                </button>
+              ))}
             </div>
           </div>
         );
-      
+
       default:
         return null;
     }
