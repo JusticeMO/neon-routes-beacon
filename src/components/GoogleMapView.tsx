@@ -113,6 +113,28 @@ const GoogleMapView = () => {
         <MapControls onReset={() => {}} />
         {routeLines}
 
+        {/* Bus stop markers */}
+        {nairobiRoutes.flatMap(route =>
+          route.stops.map((stop, i) => (
+            <CircleMarker
+              key={`stop-${route.id}-${i}`}
+              center={[stop.lat, stop.lng]}
+              radius={4}
+              pathOptions={{
+                color: route.color,
+                weight: 1.5,
+                fillColor: isDark ? '#0f0f1a' : '#ffffff',
+                fillOpacity: 1,
+                opacity: 0.9,
+              }}
+            >
+              <Tooltip className="neon-tooltip" direction="top" offset={[0, -6]}>
+                {stop.name}
+              </Tooltip>
+            </CircleMarker>
+          ))
+        )}
+
         {buses.map(bus => {
           const route = nairobiRoutes.find(r => r.number === bus.route);
           const color = route?.color || '#3B82F6';
