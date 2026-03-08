@@ -2,83 +2,73 @@
 @tailwind components;
 @tailwind utilities;
 
-/* BEACON Design System - Tesla/Apple Inspired
-Premium dark theme with neon glowing accents
-All colors MUST be HSL.
+/* BEACON Design System - Tesla-Inspired
+   Clean, bright, premium dark theme with vibrant accents
 */
 
 @layer base {
   :root {
-    /* Dark theme base colors */
-    --background: 220 13% 9%;
-    --foreground: 210 40% 98%;
+    /* Brighter dark theme - not pitch black */
+    --background: 220 15% 11%;
+    --foreground: 210 20% 95%;
 
-    /* Card and surface colors */
-    --card: 220 13% 12%;
-    --card-foreground: 210 40% 98%;
+    /* Elevated surfaces */
+    --card: 220 14% 16%;
+    --card-foreground: 210 20% 95%;
 
-    --popover: 220 13% 15%;
-    --popover-foreground: 210 40% 98%;
+    --popover: 220 14% 18%;
+    --popover-foreground: 210 20% 95%;
 
-    /* Tesla-inspired primary colors */
-    --primary: 210 100% 50%;
-    --primary-foreground: 220 13% 9%;
+    /* Tesla blue primary */
+    --primary: 217 91% 60%;
+    --primary-foreground: 0 0% 100%;
 
-    --secondary: 220 13% 18%;
-    --secondary-foreground: 210 40% 98%;
+    --secondary: 220 14% 22%;
+    --secondary-foreground: 210 20% 95%;
 
-    --muted: 220 13% 15%;
-    --muted-foreground: 215 20.2% 65.1%;
+    --muted: 220 14% 20%;
+    --muted-foreground: 215 15% 55%;
 
-    --accent: 120 100% 50%;
-    --accent-foreground: 220 13% 9%;
+    --accent: 160 84% 39%;
+    --accent-foreground: 0 0% 100%;
 
-    /* Neon route colors */
-    --neon-blue: 210 100% 56%;
-    --neon-green: 120 100% 50%;
-    --neon-orange: 25 100% 50%;
-    --neon-purple: 270 100% 60%;
+    /* Route colors */
+    --neon-blue: 217 91% 60%;
+    --neon-green: 160 84% 39%;
+    --neon-orange: 38 92% 50%;
+    --neon-purple: 263 70% 50%;
 
-    /* Status colors */
-    --success: 120 100% 40%;
-    --warning: 45 100% 50%;
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
+    /* Status */
+    --success: 160 84% 39%;
+    --warning: 38 92% 50%;
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
 
-    /* Surface and interaction colors */
-    --border: 220 13% 20%;
-    --input: 220 13% 18%;
-    --ring: 210 100% 56%;
+    /* Borders & inputs */
+    --border: 220 13% 24%;
+    --input: 220 14% 20%;
+    --ring: 217 91% 60%;
 
-    /* Glassmorphism effects */
-    --glass: 220 13% 15% / 0.8;
-    --glass-border: 210 40% 98% / 0.1;
+    /* Glass */
+    --glass: 220 14% 16% / 0.85;
+    --glass-border: 210 20% 95% / 0.08;
 
-    /* Shadows and glows */
-    --glow-blue: 0 0 20px hsl(var(--neon-blue) / 0.5);
-    --glow-green: 0 0 20px hsl(var(--neon-green) / 0.5);
-    --glow-orange: 0 0 20px hsl(var(--neon-orange) / 0.5);
+    /* Glows */
+    --glow-blue: 0 0 20px hsl(217 91% 60% / 0.4);
+    --glow-green: 0 0 20px hsl(160 84% 39% / 0.4);
+    --glow-orange: 0 0 20px hsl(38 92% 50% / 0.4);
 
     --radius: 12px;
 
-    --sidebar-background: 0 0% 98%;
-
-    --sidebar-foreground: 240 5.3% 26.1%;
-
-    --sidebar-primary: 240 5.9% 10%;
-
-    --sidebar-primary-foreground: 0 0% 98%;
-
-    --sidebar-accent: 240 4.8% 95.9%;
-
-    --sidebar-accent-foreground: 240 5.9% 10%;
-
-    --sidebar-border: 220 13% 91%;
-
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    --sidebar-background: 220 14% 14%;
+    --sidebar-foreground: 210 20% 95%;
+    --sidebar-primary: 217 91% 60%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 220 14% 22%;
+    --sidebar-accent-foreground: 210 20% 95%;
+    --sidebar-border: 220 13% 24%;
+    --sidebar-ring: 217 91% 60%;
   }
-
-  /* BEACON Dark theme is the default - no light mode needed */
 }
 
 @layer base {
@@ -87,8 +77,8 @@ All colors MUST be HSL.
   }
 
   body {
-    @apply bg-background text-foreground font-sans antialiased;
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+    @apply bg-background text-foreground antialiased;
+    font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', 'Roboto', sans-serif;
   }
 }
 
@@ -96,45 +86,36 @@ All colors MUST be HSL.
 .leaflet-container {
   width: 100%;
   height: 100%;
-  background: hsl(220 13% 9%);
+  background: hsl(220 15% 6%);
 }
 
 .neon-tooltip {
-  background: hsl(220 13% 12% / 0.9) !important;
-  border: 1px solid hsl(210 40% 98% / 0.1) !important;
-  color: hsl(210 40% 98%) !important;
-  font-size: 12px !important;
-  padding: 4px 8px !important;
-  border-radius: 6px !important;
-  box-shadow: 0 0 10px hsl(210 100% 50% / 0.3) !important;
+  background: hsl(220 14% 14% / 0.95) !important;
+  border: 1px solid hsl(217 91% 60% / 0.3) !important;
+  color: hsl(210 20% 95%) !important;
+  font-size: 11px !important;
+  font-weight: 600 !important;
+  padding: 4px 10px !important;
+  border-radius: 8px !important;
+  box-shadow: 0 4px 12px hsl(0 0% 0% / 0.3), 0 0 8px hsl(217 91% 60% / 0.2) !important;
+  letter-spacing: 0.02em !important;
 }
 
 .neon-tooltip::before {
-  border-top-color: hsl(220 13% 12% / 0.9) !important;
+  border-top-color: hsl(220 14% 14% / 0.95) !important;
 }
 
 @layer components {
-  /* Glassmorphism surfaces */
   .glass-surface {
     @apply backdrop-blur-xl;
     background: hsl(var(--glass));
     border: 1px solid hsl(var(--glass-border));
   }
 
-  /* Neon glow effects */
-  .glow-blue {
-    box-shadow: var(--glow-blue);
-  }
+  .glow-blue { box-shadow: var(--glow-blue); }
+  .glow-green { box-shadow: var(--glow-green); }
+  .glow-orange { box-shadow: var(--glow-orange); }
 
-  .glow-green {
-    box-shadow: var(--glow-green);
-  }
-
-  .glow-orange {
-    box-shadow: var(--glow-orange);
-  }
-
-  /* Route line animations */
   .route-line {
     @apply relative overflow-hidden;
   }
@@ -146,23 +127,20 @@ All colors MUST be HSL.
     animation: shimmer 2s infinite;
   }
 
-  /* Tesla-inspired loading animation */
   .tesla-loader {
     @apply w-1 h-8 bg-primary rounded-full;
     animation: tesla-pulse 1.5s ease-in-out infinite;
   }
 
-  /* Circuit pattern background for splash */
   .circuit-bg {
     background-image: 
-      radial-gradient(circle at 20% 50%, hsl(var(--neon-blue) / 0.1) 0%, transparent 50%),
-      radial-gradient(circle at 80% 20%, hsl(var(--neon-green) / 0.1) 0%, transparent 50%),
-      radial-gradient(circle at 40% 80%, hsl(var(--neon-orange) / 0.1) 0%, transparent 50%);
+      radial-gradient(circle at 20% 50%, hsl(var(--neon-blue) / 0.08) 0%, transparent 50%),
+      radial-gradient(circle at 80% 20%, hsl(var(--neon-green) / 0.08) 0%, transparent 50%),
+      radial-gradient(circle at 40% 80%, hsl(var(--neon-orange) / 0.08) 0%, transparent 50%);
   }
 }
 
 @layer utilities {
-  /* Custom animations */
   @keyframes shimmer {
     0% { transform: translateX(-100%); }
     100% { transform: translateX(100%); }
@@ -170,15 +148,15 @@ All colors MUST be HSL.
 
   @keyframes tesla-pulse {
     0%, 100% { opacity: 1; transform: scaleY(1); }
-    50% { opacity: 0.5; transform: scaleY(0.8); }
+    50% { opacity: 0.4; transform: scaleY(0.7); }
   }
 
   @keyframes glow-pulse {
     0%, 100% { 
-      box-shadow: 0 0 5px hsl(var(--primary) / 0.5);
+      box-shadow: 0 0 5px hsl(var(--primary) / 0.3);
     }
     50% { 
-      box-shadow: 0 0 20px hsl(var(--primary) / 0.8), 0 0 30px hsl(var(--primary) / 0.5);
+      box-shadow: 0 0 15px hsl(var(--primary) / 0.6), 0 0 25px hsl(var(--primary) / 0.3);
     }
   }
 
@@ -187,20 +165,14 @@ All colors MUST be HSL.
     100% { stroke-dashoffset: 0; }
   }
 
-  /* Animation classes */
-  .animate-shimmer {
-    animation: shimmer 2s infinite;
+  @keyframes fade-in {
+    0% { opacity: 0; transform: translateY(8px); }
+    100% { opacity: 1; transform: translateY(0); }
   }
 
-  .animate-tesla-pulse {
-    animation: tesla-pulse 1.5s ease-in-out infinite;
-  }
-
-  .animate-glow-pulse {
-    animation: glow-pulse 2s ease-in-out infinite;
-  }
-
-  .animate-circuit-draw {
-    animation: circuit-draw 3s ease-out forwards;
-  }
+  .animate-shimmer { animation: shimmer 2s infinite; }
+  .animate-tesla-pulse { animation: tesla-pulse 1.5s ease-in-out infinite; }
+  .animate-glow-pulse { animation: glow-pulse 2s ease-in-out infinite; }
+  .animate-circuit-draw { animation: circuit-draw 3s ease-out forwards; }
+  .animate-fade-in { animation: fade-in 0.3s ease-out forwards; }
 }
