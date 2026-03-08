@@ -112,18 +112,13 @@ const GoogleMapView = () => {
     return () => clearInterval(interval);
   }, []);
 
-  const routeLines = useMemo(() => nairobiRoutes.map(route => {
+  const routeLines = useMemo(() => nairobiRoutes.flatMap(route => {
     const path = route.path.map(p => [p.lat, p.lng] as [number, number]);
-    return (
-      <div key={route.id}>
-        {/* Outer glow */}
-        <Polyline positions={path} pathOptions={{ color: route.color, weight: 14, opacity: 0.2 }} />
-        {/* Mid glow */}
-        <Polyline positions={path} pathOptions={{ color: route.color, weight: 7, opacity: 0.5 }} />
-        {/* Core line */}
-        <Polyline positions={path} pathOptions={{ color: route.color, weight: 2, opacity: 1 }} />
-      </div>
-    );
+    return [
+      <Polyline key={`${route.id}-glow`} positions={path} pathOptions={{ color: route.color, weight: 14, opacity: 0.2 }} />,
+      <Polyline key={`${route.id}-mid`} positions={path} pathOptions={{ color: route.color, weight: 7, opacity: 0.5 }} />,
+      <Polyline key={`${route.id}-core`} positions={path} pathOptions={{ color: route.color, weight: 2, opacity: 1 }} />,
+    ];
   }), []);
 
   return (
