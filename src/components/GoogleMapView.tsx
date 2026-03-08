@@ -1,5 +1,5 @@
 import { useEffect, useState, useMemo } from 'react';
-import { Plus, Minus, RotateCcw } from 'lucide-react';
+import { Plus, Minus, RotateCcw, Eye, EyeOff } from 'lucide-react';
 import { Button } from './ui/button';
 import { MapContainer, TileLayer, Polyline, CircleMarker, useMap, Tooltip } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -38,7 +38,6 @@ const MapControls = ({ onReset }: { onReset: () => void }) => {
   );
 };
 
-// Needed to swap tile layers when theme changes
 const DynamicTileLayer = () => {
   const { theme } = useTheme();
   return <TileLayer key={theme} url={TILE_URLS[theme]} attribution='&copy; OpenStreetMap' />;
@@ -46,6 +45,28 @@ const DynamicTileLayer = () => {
 
 const GoogleMapView = () => {
   const { theme } = useTheme();
+  // Track which routes are visible — all on by default
+  const [activeRoutes, setActiveRoutes] = useState<Set<string>>(
+    () => new Set(nairobiRoutes.map(r => r.number))
+  );
+
+  const toggleRoute = (routeNumber: string) => {
+    setActiveRoutes(prev => {
+      const next = new Set(prev);
+      if (next.has(routeNumber)) {
+        next.delete(routeNumber);
+      } else {
+        next.add(routeNumber);
+      }
+      return next;
+    });
+  };
+
+  const visibleRoutes = useMemo(
+    () => nairobiRoutes.filter(r => activeRoutes.has(r.number)),
+    [activeRoutes]
+  );
+
   const [buses, setBuses] = useState<Bus[]>(() =>
     nairobiRoutes.map((route, i) => ({
       id: i + 1,
@@ -90,14 +111,16 @@ const GoogleMapView = () => {
   const isDark = theme === 'dark' || theme === 'live';
   const glowIntensity = theme === 'live' ? 0.25 : theme === 'dark' ? 0.15 : 0.08;
 
-  const routeLines = useMemo(() => nairobiRoutes.flatMap(route => {
+  const routeLines = useMemo(() => visibleRoutes.flatMap(route => {
     const path = route.path.map(p => [p.lat, p.lng] as [number, number]);
     return [
       <Polyline key={`${route.id}-glow`} positions={path} pathOptions={{ color: route.color, weight: theme === 'live' ? 20 : 14, opacity: glowIntensity }} />,
       <Polyline key={`${route.id}-mid`} positions={path} pathOptions={{ color: route.color, weight: theme === 'live' ? 10 : 7, opacity: isDark ? 0.5 : 0.35 }} />,
       <Polyline key={`${route.id}-core`} positions={path} pathOptions={{ color: route.color, weight: 3, opacity: 1 }} />,
     ];
-  }), [theme, isDark, glowIntensity]);
+  }), [visibleRoutes, theme, isDark, glowIntensity]);
+
+  const visibleBuses = buses.filter(b => activeRoutes.has(b.route));
 
   return (
     <div className="relative w-full h-full overflow-hidden">
@@ -113,8 +136,8 @@ const GoogleMapView = () => {
         <MapControls onReset={() => {}} />
         {routeLines}
 
-        {/* Bus stop markers */}
-        {nairobiRoutes.flatMap(route =>
+        {/* Bus stop markers — only for visible routes */}
+        {visibleRoutes.flatMap(route =>
           route.stops.map((stop, i) => (
             <CircleMarker
               key={`stop-${route.id}-${i}`}
@@ -135,7 +158,7 @@ const GoogleMapView = () => {
           ))
         )}
 
-        {buses.map(bus => {
+        {visibleBuses.map(bus => {
           const route = nairobiRoutes.find(r => r.number === bus.route);
           const color = route?.color || '#3B82F6';
           return (
@@ -163,17 +186,41 @@ const GoogleMapView = () => {
         <ThemeToggle />
       </div>
 
-      {/* Route legend — top right */}
+      {/* Route legend with toggles — top right */}
       <div className="absolute top-4 right-4 z-[1000]">
-        <div className="bg-card/90 backdrop-blur-xl p-3 rounded-2xl border border-border/30 shadow-xl">
-          <h3 className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-2">Live Routes</h3>
-          <div className="space-y-1.5">
-            {nairobiRoutes.map(route => (
-              <div key={route.id} className="flex items-center space-x-2">
-                <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: route.color, boxShadow: isDark ? `0 0 6px ${route.color}60` : 'none' }} />
-                <span className="text-xs font-medium">{route.name}</span>
-              </div>
-            ))}
+        <div className="bg-card/90 backdrop-blur-xl p-3 rounded-2xl border border-border/30 shadow-xl min-w-[160px]">
+          <h3 className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-2">Routes</h3>
+          <div className="space-y-1">
+            {nairobiRoutes.map(route => {
+              const isActive = activeRoutes.has(route.number);
+              return (
+                <button
+                  key={route.id}
+                  onClick={() => toggleRoute(route.number)}
+                  className={`
+                    flex items-center w-full space-x-2 px-2 py-1.5 rounded-lg transition-all duration-200
+                    ${isActive
+                      ? 'hover:bg-muted/30'
+                      : 'opacity-40 hover:opacity-60'
+                    }
+                  `}
+                >
+                  <div
+                    className="w-2.5 h-2.5 rounded-full flex-shrink-0 transition-all"
+                    style={{
+                      backgroundColor: route.color,
+                      boxShadow: isActive && isDark ? `0 0 6px ${route.color}60` : 'none',
+                    }}
+                  />
+                  <span className="text-xs font-medium flex-1 text-left">{route.name}</span>
+                  {isActive ? (
+                    <Eye className="w-3 h-3 text-muted-foreground flex-shrink-0" />
+                  ) : (
+                    <EyeOff className="w-3 h-3 text-muted-foreground flex-shrink-0" />
+                  )}
+                </button>
+              );
+            })}
           </div>
         </div>
       </div>
@@ -182,7 +229,7 @@ const GoogleMapView = () => {
       <div className="absolute bottom-4 left-4 z-[1000]">
         <div className="bg-card/80 backdrop-blur-md px-3 py-1.5 rounded-full border border-border/20 text-xs text-muted-foreground flex items-center gap-2">
           <div className="w-2 h-2 rounded-full bg-accent animate-pulse" />
-          Live Tracking
+          {activeRoutes.size} of {nairobiRoutes.length} routes active
         </div>
       </div>
     </div>
