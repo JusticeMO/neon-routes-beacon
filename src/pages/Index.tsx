@@ -37,7 +37,7 @@ const Index = () => {
             </div>
             
             {/* Map view */}
-            <div className="flex-1">
+            <div className="flex-1 relative" style={{ minHeight: 0 }}>
               <GoogleMapView />
             </div>
           </div>
