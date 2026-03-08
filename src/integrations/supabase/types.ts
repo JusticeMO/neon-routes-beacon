@@ -14,16 +14,325 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      compliance_documents: {
+        Row: {
+          created_at: string
+          document_name: string
+          document_type: string
+          expiry_date: string | null
+          file_url: string | null
+          id: string
+          sacco_id: string | null
+          status: string
+          vehicle_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          document_name: string
+          document_type: string
+          expiry_date?: string | null
+          file_url?: string | null
+          id?: string
+          sacco_id?: string | null
+          status?: string
+          vehicle_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          document_name?: string
+          document_type?: string
+          expiry_date?: string | null
+          file_url?: string | null
+          id?: string
+          sacco_id?: string | null
+          status?: string
+          vehicle_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "compliance_documents_sacco_id_fkey"
+            columns: ["sacco_id"]
+            isOneToOne: false
+            referencedRelation: "saccos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "compliance_documents_vehicle_id_fkey"
+            columns: ["vehicle_id"]
+            isOneToOne: false
+            referencedRelation: "vehicles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      driver_assignments: {
+        Row: {
+          assigned_at: string
+          driver_id: string
+          id: string
+          sacco_id: string
+          status: string
+          vehicle_id: string
+        }
+        Insert: {
+          assigned_at?: string
+          driver_id: string
+          id?: string
+          sacco_id: string
+          status?: string
+          vehicle_id: string
+        }
+        Update: {
+          assigned_at?: string
+          driver_id?: string
+          id?: string
+          sacco_id?: string
+          status?: string
+          vehicle_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "driver_assignments_sacco_id_fkey"
+            columns: ["sacco_id"]
+            isOneToOne: false
+            referencedRelation: "saccos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "driver_assignments_vehicle_id_fkey"
+            columns: ["vehicle_id"]
+            isOneToOne: false
+            referencedRelation: "vehicles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          created_at: string
+          full_name: string | null
+          id: string
+          phone: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string
+          full_name?: string | null
+          id?: string
+          phone?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string
+          full_name?: string | null
+          id?: string
+          phone?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      routes: {
+        Row: {
+          color: string
+          created_at: string
+          fare_amount: number | null
+          id: string
+          path: Json | null
+          route_name: string
+          route_number: string
+          sacco_id: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          color?: string
+          created_at?: string
+          fare_amount?: number | null
+          id?: string
+          path?: Json | null
+          route_name: string
+          route_number: string
+          sacco_id: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          color?: string
+          created_at?: string
+          fare_amount?: number | null
+          id?: string
+          path?: Json | null
+          route_name?: string
+          route_number?: string
+          sacco_id?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "routes_sacco_id_fkey"
+            columns: ["sacco_id"]
+            isOneToOne: false
+            referencedRelation: "saccos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sacco_managers: {
+        Row: {
+          id: string
+          sacco_id: string
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          sacco_id: string
+          user_id: string
+        }
+        Update: {
+          id?: string
+          sacco_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sacco_managers_sacco_id_fkey"
+            columns: ["sacco_id"]
+            isOneToOne: false
+            referencedRelation: "saccos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      saccos: {
+        Row: {
+          address: string | null
+          contact_email: string | null
+          contact_phone: string | null
+          created_at: string
+          created_by: string | null
+          id: string
+          name: string
+          registration_number: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          address?: string | null
+          contact_email?: string | null
+          contact_phone?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          name: string
+          registration_number: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          address?: string | null
+          contact_email?: string | null
+          contact_phone?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          name?: string
+          registration_number?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      user_roles: {
+        Row: {
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
+      vehicles: {
+        Row: {
+          capacity: number
+          created_at: string
+          id: string
+          plate_number: string
+          route_id: string | null
+          sacco_id: string
+          status: string
+          updated_at: string
+          vehicle_type: string
+        }
+        Insert: {
+          capacity?: number
+          created_at?: string
+          id?: string
+          plate_number: string
+          route_id?: string | null
+          sacco_id: string
+          status?: string
+          updated_at?: string
+          vehicle_type?: string
+        }
+        Update: {
+          capacity?: number
+          created_at?: string
+          id?: string
+          plate_number?: string
+          route_id?: string | null
+          sacco_id?: string
+          status?: string
+          updated_at?: string
+          vehicle_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vehicles_route_id_fkey"
+            columns: ["route_id"]
+            isOneToOne: false
+            referencedRelation: "routes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vehicles_sacco_id_fkey"
+            columns: ["sacco_id"]
+            isOneToOne: false
+            referencedRelation: "saccos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "admin" | "sacco_manager" | "driver" | "passenger"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +459,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["admin", "sacco_manager", "driver", "passenger"],
+    },
   },
 } as const
