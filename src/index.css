@@ -2,72 +2,182 @@
 @tailwind components;
 @tailwind utilities;
 
-/* BEACON Design System - Tesla-Inspired
-   Clean, bright, premium dark theme with vibrant accents
-*/
+/* BEACON Design System — Uber/Bolt inspired with theme switching */
 
 @layer base {
-  :root {
-    /* Brighter dark theme - not pitch black */
-    --background: 220 15% 11%;
-    --foreground: 210 20% 95%;
+  /* ===== BRIGHT (default — Google Maps / Uber style) ===== */
+  :root,
+  [data-theme="bright"] {
+    --background: 0 0% 97%;
+    --foreground: 220 15% 15%;
 
-    /* Elevated surfaces */
-    --card: 220 14% 16%;
-    --card-foreground: 210 20% 95%;
+    --card: 0 0% 100%;
+    --card-foreground: 220 15% 15%;
 
-    --popover: 220 14% 18%;
-    --popover-foreground: 210 20% 95%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 220 15% 15%;
 
-    /* Tesla blue primary */
-    --primary: 217 91% 60%;
+    --primary: 220 90% 50%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 220 14% 22%;
-    --secondary-foreground: 210 20% 95%;
+    --secondary: 220 10% 93%;
+    --secondary-foreground: 220 15% 20%;
 
-    --muted: 220 14% 20%;
-    --muted-foreground: 215 15% 55%;
+    --muted: 220 10% 93%;
+    --muted-foreground: 220 10% 45%;
 
     --accent: 160 84% 39%;
     --accent-foreground: 0 0% 100%;
 
-    /* Route colors */
     --neon-blue: 217 91% 60%;
     --neon-green: 160 84% 39%;
     --neon-orange: 38 92% 50%;
     --neon-purple: 263 70% 50%;
 
-    /* Status */
     --success: 160 84% 39%;
     --warning: 38 92% 50%;
     --destructive: 0 72% 51%;
     --destructive-foreground: 0 0% 100%;
 
-    /* Borders & inputs */
-    --border: 220 13% 24%;
-    --input: 220 14% 20%;
+    --border: 220 13% 88%;
+    --input: 220 13% 91%;
+    --ring: 220 90% 50%;
+
+    --glass: 0 0% 100% / 0.92;
+    --glass-border: 220 15% 15% / 0.08;
+
+    --glow-blue: 0 0 12px hsl(217 91% 60% / 0.25);
+    --glow-green: 0 0 12px hsl(160 84% 39% / 0.25);
+    --glow-orange: 0 0 12px hsl(38 92% 50% / 0.25);
+
+    --radius: 12px;
+
+    --sidebar-background: 0 0% 100%;
+    --sidebar-foreground: 220 15% 15%;
+    --sidebar-primary: 220 90% 50%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 220 10% 95%;
+    --sidebar-accent-foreground: 220 15% 15%;
+    --sidebar-border: 220 13% 88%;
+    --sidebar-ring: 220 90% 50%;
+
+    --map-bg: 210 20% 96%;
+  }
+
+  /* ===== DARK (Tesla / night mode) ===== */
+  [data-theme="dark"] {
+    --background: 220 15% 8%;
+    --foreground: 210 20% 95%;
+
+    --card: 220 14% 13%;
+    --card-foreground: 210 20% 95%;
+
+    --popover: 220 14% 15%;
+    --popover-foreground: 210 20% 95%;
+
+    --primary: 217 91% 60%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 220 14% 20%;
+    --secondary-foreground: 210 20% 95%;
+
+    --muted: 220 14% 18%;
+    --muted-foreground: 215 15% 55%;
+
+    --accent: 160 84% 39%;
+    --accent-foreground: 0 0% 100%;
+
+    --neon-blue: 217 91% 60%;
+    --neon-green: 160 84% 39%;
+    --neon-orange: 38 92% 50%;
+    --neon-purple: 263 70% 50%;
+
+    --success: 160 84% 39%;
+    --warning: 38 92% 50%;
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 220 13% 22%;
+    --input: 220 14% 18%;
     --ring: 217 91% 60%;
 
-    /* Glass */
-    --glass: 220 14% 16% / 0.85;
+    --glass: 220 14% 13% / 0.9;
     --glass-border: 210 20% 95% / 0.08;
 
-    /* Glows */
     --glow-blue: 0 0 20px hsl(217 91% 60% / 0.4);
     --glow-green: 0 0 20px hsl(160 84% 39% / 0.4);
     --glow-orange: 0 0 20px hsl(38 92% 50% / 0.4);
 
     --radius: 12px;
 
-    --sidebar-background: 220 14% 14%;
+    --sidebar-background: 220 14% 11%;
     --sidebar-foreground: 210 20% 95%;
     --sidebar-primary: 217 91% 60%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 220 14% 22%;
+    --sidebar-accent: 220 14% 20%;
     --sidebar-accent-foreground: 210 20% 95%;
-    --sidebar-border: 220 13% 24%;
+    --sidebar-border: 220 13% 22%;
     --sidebar-ring: 217 91% 60%;
+
+    --map-bg: 220 15% 6%;
+  }
+
+  /* ===== LIVE (vibrant Bolt-style with neon accents) ===== */
+  [data-theme="live"] {
+    --background: 225 20% 6%;
+    --foreground: 210 20% 95%;
+
+    --card: 225 18% 11%;
+    --card-foreground: 210 20% 95%;
+
+    --popover: 225 18% 13%;
+    --popover-foreground: 210 20% 95%;
+
+    --primary: 150 100% 45%;
+    --primary-foreground: 220 20% 8%;
+
+    --secondary: 225 18% 16%;
+    --secondary-foreground: 210 20% 95%;
+
+    --muted: 225 18% 14%;
+    --muted-foreground: 215 15% 50%;
+
+    --accent: 38 100% 55%;
+    --accent-foreground: 220 20% 8%;
+
+    --neon-blue: 200 100% 55%;
+    --neon-green: 150 100% 45%;
+    --neon-orange: 38 100% 55%;
+    --neon-purple: 280 80% 60%;
+
+    --success: 150 100% 45%;
+    --warning: 38 100% 55%;
+    --destructive: 0 80% 55%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 225 15% 20%;
+    --input: 225 18% 14%;
+    --ring: 150 100% 45%;
+
+    --glass: 225 18% 11% / 0.92;
+    --glass-border: 150 100% 45% / 0.12;
+
+    --glow-blue: 0 0 24px hsl(200 100% 55% / 0.5);
+    --glow-green: 0 0 24px hsl(150 100% 45% / 0.5);
+    --glow-orange: 0 0 24px hsl(38 100% 55% / 0.5);
+
+    --radius: 14px;
+
+    --sidebar-background: 225 18% 9%;
+    --sidebar-foreground: 210 20% 95%;
+    --sidebar-primary: 150 100% 45%;
+    --sidebar-primary-foreground: 220 20% 8%;
+    --sidebar-accent: 225 18% 16%;
+    --sidebar-accent-foreground: 210 20% 95%;
+    --sidebar-border: 225 15% 20%;
+    --sidebar-ring: 150 100% 45%;
+
+    --map-bg: 225 20% 4%;
   }
 }
 
@@ -82,27 +192,33 @@
   }
 }
 
-/* Leaflet overrides */
+/* Leaflet overrides — dynamic per theme */
 .leaflet-container {
   width: 100%;
   height: 100%;
-  background: hsl(220 15% 6%);
+  background: hsl(var(--map-bg));
 }
 
+/* Tooltip adapts to theme */
 .neon-tooltip {
-  background: hsl(220 14% 14% / 0.95) !important;
-  border: 1px solid hsl(217 91% 60% / 0.3) !important;
-  color: hsl(210 20% 95%) !important;
+  background: hsl(var(--card)) !important;
+  border: 1px solid hsl(var(--border)) !important;
+  color: hsl(var(--foreground)) !important;
   font-size: 11px !important;
   font-weight: 600 !important;
   padding: 4px 10px !important;
   border-radius: 8px !important;
-  box-shadow: 0 4px 12px hsl(0 0% 0% / 0.3), 0 0 8px hsl(217 91% 60% / 0.2) !important;
+  box-shadow: 0 4px 12px hsl(0 0% 0% / 0.15) !important;
   letter-spacing: 0.02em !important;
 }
 
 .neon-tooltip::before {
-  border-top-color: hsl(220 14% 14% / 0.95) !important;
+  border-top-color: hsl(var(--card)) !important;
+}
+
+[data-theme="dark"] .neon-tooltip,
+[data-theme="live"] .neon-tooltip {
+  box-shadow: 0 4px 12px hsl(0 0% 0% / 0.4), 0 0 8px hsl(var(--primary) / 0.15) !important;
 }
 
 @layer components {
@@ -126,18 +242,6 @@
     transform: translateX(-100%);
     animation: shimmer 2s infinite;
   }
-
-  .tesla-loader {
-    @apply w-1 h-8 bg-primary rounded-full;
-    animation: tesla-pulse 1.5s ease-in-out infinite;
-  }
-
-  .circuit-bg {
-    background-image: 
-      radial-gradient(circle at 20% 50%, hsl(var(--neon-blue) / 0.08) 0%, transparent 50%),
-      radial-gradient(circle at 80% 20%, hsl(var(--neon-green) / 0.08) 0%, transparent 50%),
-      radial-gradient(circle at 40% 80%, hsl(var(--neon-orange) / 0.08) 0%, transparent 50%);
-  }
 }
 
 @layer utilities {
@@ -146,23 +250,9 @@
     100% { transform: translateX(100%); }
   }
 
-  @keyframes tesla-pulse {
-    0%, 100% { opacity: 1; transform: scaleY(1); }
-    50% { opacity: 0.4; transform: scaleY(0.7); }
-  }
-
   @keyframes glow-pulse {
-    0%, 100% { 
-      box-shadow: 0 0 5px hsl(var(--primary) / 0.3);
-    }
-    50% { 
-      box-shadow: 0 0 15px hsl(var(--primary) / 0.6), 0 0 25px hsl(var(--primary) / 0.3);
-    }
-  }
-
-  @keyframes circuit-draw {
-    0% { stroke-dashoffset: 1000; }
-    100% { stroke-dashoffset: 0; }
+    0%, 100% { box-shadow: 0 0 5px hsl(var(--primary) / 0.3); }
+    50% { box-shadow: 0 0 15px hsl(var(--primary) / 0.6), 0 0 25px hsl(var(--primary) / 0.3); }
   }
 
   @keyframes fade-in {
@@ -171,8 +261,6 @@
   }
 
   .animate-shimmer { animation: shimmer 2s infinite; }
-  .animate-tesla-pulse { animation: tesla-pulse 1.5s ease-in-out infinite; }
   .animate-glow-pulse { animation: glow-pulse 2s ease-in-out infinite; }
-  .animate-circuit-draw { animation: circuit-draw 3s ease-out forwards; }
   .animate-fade-in { animation: fade-in 0.3s ease-out forwards; }
 }
