@@ -91,30 +91,33 @@ export const nairobiRoutes: Route[] = [
     number: '15',
     name: 'CBD → Karen',
     color: '#F59E0B', // amber
+    stops: [
+      { name: 'Railway Station', lat: -1.2900, lng: 36.8225 },
+      { name: 'Haile Selassie', lat: -1.2940, lng: 36.8190 },
+      { name: 'Nyayo Stadium', lat: -1.3015, lng: 36.8130 },
+      { name: 'T-Mall', lat: -1.3090, lng: 36.8090 },
+      { name: 'Wilson Airport', lat: -1.3175, lng: 36.8035 },
+      { name: 'Langata Rd', lat: -1.3265, lng: 36.7970 },
+      { name: 'Galleria Mall', lat: -1.3380, lng: 36.7855 },
+      { name: 'Karen Shopping Centre', lat: -1.3440, lng: 36.7740 },
+    ],
     path: [
-      // Start at Railway Station area
       { lat: -1.2900, lng: 36.8225 },
       { lat: -1.2920, lng: 36.8210 },
-      // Haile Selassie Avenue
       { lat: -1.2940, lng: 36.8190 },
       { lat: -1.2960, lng: 36.8168 },
-      // Onto Uhuru Highway south
       { lat: -1.2985, lng: 36.8148 },
       { lat: -1.3015, lng: 36.8130 },
-      // Langata Road
       { lat: -1.3050, lng: 36.8115 },
       { lat: -1.3090, lng: 36.8090 },
       { lat: -1.3130, lng: 36.8065 },
       { lat: -1.3175, lng: 36.8035 },
       { lat: -1.3220, lng: 36.8005 },
-      // Continue on Langata Rd
       { lat: -1.3265, lng: 36.7970 },
       { lat: -1.3310, lng: 36.7935 },
       { lat: -1.3350, lng: 36.7895 },
-      // Karen Road junction
       { lat: -1.3380, lng: 36.7855 },
       { lat: -1.3400, lng: 36.7815 },
-      // Karen Shopping Centre area
       { lat: -1.3420, lng: 36.7775 },
       { lat: -1.3440, lng: 36.7740 },
     ]
