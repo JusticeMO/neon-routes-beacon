@@ -56,25 +56,30 @@ export const nairobiRoutes: Route[] = [
     number: '34',
     name: 'CBD → Kasarani',
     color: '#10B981', // emerald green
+    stops: [
+      { name: 'Tom Mboya St', lat: -1.2830, lng: 36.8260 },
+      { name: 'Globe Roundabout', lat: -1.2785, lng: 36.8285 },
+      { name: 'Pangani', lat: -1.2730, lng: 36.8305 },
+      { name: 'Muthaiga Rdbt', lat: -1.2660, lng: 36.8338 },
+      { name: 'Roysambu', lat: -1.2540, lng: 36.8390 },
+      { name: 'TRM', lat: -1.2455, lng: 36.8425 },
+      { name: 'Kasarani Stadium', lat: -1.2320, lng: 36.8490 },
+      { name: 'Kasarani', lat: -1.2230, lng: 36.8530 },
+    ],
     path: [
-      // Start at CBD / Tom Mboya Street
       { lat: -1.2830, lng: 36.8260 },
       { lat: -1.2810, lng: 36.8270 },
-      // Along Murang'a Road
       { lat: -1.2785, lng: 36.8285 },
       { lat: -1.2760, lng: 36.8295 },
       { lat: -1.2730, lng: 36.8305 },
-      // Thika Road begins
       { lat: -1.2695, lng: 36.8320 },
       { lat: -1.2660, lng: 36.8338 },
       { lat: -1.2620, lng: 36.8355 },
       { lat: -1.2580, lng: 36.8370 },
-      // Thika Superhighway
       { lat: -1.2540, lng: 36.8390 },
       { lat: -1.2500, lng: 36.8405 },
       { lat: -1.2455, lng: 36.8425 },
       { lat: -1.2410, lng: 36.8445 },
-      // Kasarani area
       { lat: -1.2365, lng: 36.8465 },
       { lat: -1.2320, lng: 36.8490 },
       { lat: -1.2275, lng: 36.8510 },
