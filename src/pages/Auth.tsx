@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Zap, LogIn, UserPlus } from 'lucide-react';
 import { toast } from 'sonner';
+import { isBackendConfigured } from '@/integrations/supabase/client';
 
 const Auth = () => {
   const { user, loading } = useAuth();
@@ -17,6 +18,25 @@ const Auth = () => {
 
   if (loading) return null;
   if (user) return <Navigate to="/" replace />;
+
+  if (!isBackendConfigured) {
+    return (
+      <div className="min-h-screen bg-background text-foreground flex items-center justify-center p-6">
+        <div className="max-w-md w-full bg-card rounded-2xl border border-border p-6 space-y-3">
+          <h1 className="text-lg font-bold">Sign-in is not set up yet</h1>
+          <p className="text-sm text-muted-foreground">
+            This copy of Beacon is not connected to a backend, so SACCO and admin sign-in are unavailable.
+            Route tracking still works on sample data.
+          </p>
+          <p className="text-sm text-muted-foreground">
+            To enable sign-in, set <code>VITE_SUPABASE_URL</code> and <code>VITE_SUPABASE_ANON_KEY</code> in
+            <code> .env</code> (see <code>.env.example</code> and the README).
+          </p>
+          <Button asChild variant="outline" className="w-full"><a href="/">Back to the map</a></Button>
+        </div>
+      </div>
+    );
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
