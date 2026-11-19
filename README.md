@@ -1,73 +1,40 @@
-# Welcome to your Lovable project
+# Beacon
 
-## Project info
+Beacon lets commuters see and follow shared matatus on SACCO-defined routes before they board, and gives SACCOs the operational view behind that service. Fare payment (Jipay, M-PESA and others) is an optional layer on top of tracking.
 
-**URL**: https://lovable.dev/projects/239e9743-49f6-4133-bf39-5bd60aedfcae
+- Product and build spec: [docs/build-specification.md](docs/build-specification.md)
+- Current architecture and roadmap: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
 
-## How can I edit this code?
+## Run it locally
 
-There are several ways of editing your application.
-
-**Use Lovable**
-
-Simply visit the [Lovable Project](https://lovable.dev/projects/239e9743-49f6-4133-bf39-5bd60aedfcae) and start prompting.
-
-Changes made via Lovable will be committed automatically to this repo.
-
-**Use your preferred IDE**
-
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
-
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
-
-Follow these steps:
+Requires Node.js 20+ and npm.
 
 ```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
-
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
-
-# Step 3: Install the necessary dependencies.
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
-npm run dev
+npm install
+cp .env.example .env   # optional, see "Backend" below
+npm run dev            # http://localhost:8080
 ```
 
-**Edit a file directly in GitHub**
+Other scripts: `npm run build`, `npm run preview`, `npm run typecheck`, `npm run lint`.
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+## Backend
 
-**Use GitHub Codespaces**
+Beacon uses a standard [Supabase](https://supabase.com) project (Postgres + Auth) that **you** own. Nothing is tied to any app-builder platform.
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+1. Create a project on supabase.com, or run one locally with `npx supabase start` (needs Docker).
+2. Apply the schema in `supabase/migrations`:
+   - hosted: `npx supabase link --project-ref <ref>` then `npx supabase db push`
+   - local: `npx supabase db reset`
+3. Put the project URL and anon key in `.env` as `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`.
+4. Sign up in the app at `/auth`, then make yourself an admin in SQL:
+   `insert into user_roles (user_id, role) values ('<your auth user id>', 'admin');`
 
-## What technologies are used for this project?
+Without a backend, the public commuter screens run on sample data and sign-in/admin are disabled with a notice.
 
-This project is built with:
+## Deploy
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+`npm run build` produces a static site in `dist/`. Host it on any static host (Netlify, Vercel, Cloudflare Pages, S3 + CloudFront, Nginx). Configure the two `VITE_SUPABASE_*` variables in the host's build settings and add an SPA fallback to `index.html`.
 
-## How can I deploy this project?
+## Tech
 
-Simply open [Lovable](https://lovable.dev/projects/239e9743-49f6-4133-bf39-5bd60aedfcae) and click on Share -> Publish.
-
-## Can I connect a custom domain to my Lovable project?
-
-Yes, you can!
-
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
-
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/tips-tricks/custom-domain#step-by-step-guide)
+Vite, React 18, TypeScript, Tailwind CSS, shadcn/ui, Leaflet (OpenStreetMap/CARTO tiles), TanStack Query, Supabase JS.

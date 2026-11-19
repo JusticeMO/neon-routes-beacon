@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect, useMemo } from 'react';
 import SplashScreen from '../components/SplashScreen';
 import GoogleMapView from '../components/GoogleMapView';
 import SearchBar from '../components/SearchBar';
@@ -6,20 +6,53 @@ import BottomNav from '../components/BottomNav';
 import RouteBottomSheet from '../components/RouteBottomSheet';
 import ThemeToggle from '../components/ThemeToggle';
 import { nairobiRoutes, type Route } from '@/data/routes';
+import { sampleVehicles } from '@/data/sampleVehicles';
+import { useNow, useRouteVehicles } from '@/hooks/useRouteVehicles';
+import { parseDeepLink, stageId } from '@/lib/tracking/deepLink';
+import { coverage } from '@/lib/tracking/vehicleStatus';
+import { toast } from 'sonner';
 import { Clock, Users, MapPin, ChevronRight, Banknote, Bell, Shield, Star, Settings, HelpCircle } from 'lucide-react';
 
 const Index = () => {
   const [showSplash, setShowSplash] = useState(true);
   const [activeTab, setActiveTab] = useState('home');
-  const [selectedRoute, setSelectedRoute] = useState<Route | null>(null);
+  // Deep links: ?route=<number> or ?stage=<stage id>. Bad ids fall back to the selector.
+  const initial = useMemo(() => parseDeepLink(window.location.search, nairobiRoutes), []);
+  const [selectedRoute, setSelectedRoute] = useState<Route | null>(initial.route);
+  // Default to the town terminus, where end-of-day queues form.
+  const [stageIndex, setStageIndex] = useState(initial.stage?.stageIndex ?? 0);
+  const [followedId, setFollowedId] = useState<string | null>(null);
+  const deepLinked = Boolean(initial.route);
+  useEffect(() => {
+    if (deepLinked) setShowSplash(false);
+    if (initial.invalid) toast.message("We couldn't find that stage or route. Pick one below.");
+  }, [deepLinked, initial.invalid]);
+
+  const now = useNow(1000);
+  const routeVehicles = useRouteVehicles(selectedRoute, now);
+  const mapVehicles = useMemo(
+    () => (selectedRoute ? routeVehicles : nairobiRoutes.flatMap(r => sampleVehicles(r, now))),
+    [selectedRoute, routeVehicles, now],
+  );
+
+  // Keep the URL shareable as the commuter picks a route and stage.
+  useEffect(() => {
+    const url = selectedRoute ? `?stage=${stageId(selectedRoute, stageIndex)}` : window.location.pathname;
+    window.history.replaceState(null, '', url);
+  }, [selectedRoute, stageIndex]);
 
   const handleRouteSelect = useCallback((routeNumber: string) => {
     const route = nairobiRoutes.find(r => r.number === routeNumber);
-    if (route) setSelectedRoute(route);
+    if (route) {
+      setSelectedRoute(route);
+      setStageIndex(0);
+      setFollowedId(null);
+    }
   }, []);
 
   const handleClearRoute = useCallback(() => {
     setSelectedRoute(null);
+    setFollowedId(null);
   }, []);
 
   if (showSplash) {
@@ -47,12 +80,32 @@ const Index = () => {
 
             {/* Map */}
             <div className="flex-1 relative" style={{ minHeight: 0 }}>
-              <GoogleMapView selectedRoute={selectedRoute} />
+              <GoogleMapView
+                selectedRoute={selectedRoute}
+                vehicles={mapVehicles}
+                now={now}
+                stageIndex={selectedRoute ? stageIndex : undefined}
+                followedId={followedId}
+                onVehicleClick={id => {
+                  const v = mapVehicles.find(x => x.vehicleId === id);
+                  if (v && !selectedRoute) handleRouteSelect(v.routeId);
+                  setFollowedId(id);
+                }}
+              />
             </div>
 
             {/* Route bottom sheet */}
             {selectedRoute && (
-              <RouteBottomSheet route={selectedRoute} onClose={handleClearRoute} />
+              <RouteBottomSheet
+                route={selectedRoute}
+                vehicles={routeVehicles}
+                now={now}
+                stageIndex={stageIndex}
+                onStageChange={i => { setStageIndex(i); setFollowedId(null); }}
+                followedId={followedId}
+                onFollow={setFollowedId}
+                onClose={handleClearRoute}
+              />
             )}
           </div>
         );
@@ -62,13 +115,10 @@ const Index = () => {
           <div className="p-4 space-y-3 pb-24 overflow-y-auto h-full">
             <div className="pt-2 mb-5">
               <h2 className="text-xl font-bold">Nearby Routes</h2>
-              <p className="text-muted-foreground text-sm mt-0.5">Tap a route to track it live</p>
+              <p className="text-muted-foreground text-sm mt-0.5">Tap a route to see matatus on their way to your stage. Sample data for now.</p>
             </div>
             {nairobiRoutes.map(route => {
-              const eta = ['3 min', '7 min', '12 min', '5 min'][route.id - 1];
-              const fare = ['KSh 60', 'KSh 80', 'KSh 100', 'KSh 50'][route.id - 1];
-              const seats = ['Few Seats', 'Full', 'Available', 'Few Seats'][route.id - 1];
-              const seatsColor = seats === 'Full' ? 'text-destructive' : seats === 'Available' ? 'text-accent' : 'text-warning';
+              const cov = coverage(sampleVehicles(route, now), now);
               return (
                 <button
                   key={route.id}
@@ -83,12 +133,11 @@ const Index = () => {
                       <div className="font-semibold text-sm">{route.name}</div>
                       <div className="flex items-center gap-3 mt-1">
                         <span className="text-xs text-muted-foreground flex items-center gap-1">
-                          <Clock className="w-3 h-3" />{eta}
+                          <MapPin className="w-3 h-3" />{route.stops.length} stages
                         </span>
                         <span className="text-xs text-muted-foreground flex items-center gap-1">
-                          <Banknote className="w-3 h-3" />{fare}
+                          <Users className="w-3 h-3" />{cov.reporting} of {cov.onShift} sharing location
                         </span>
-                        <span className={`text-xs font-medium ${seatsColor}`}>{seats}</span>
                       </div>
                     </div>
                     <ChevronRight className="w-4 h-4 text-muted-foreground" />
