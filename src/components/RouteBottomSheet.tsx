@@ -1,109 +1,185 @@
-import { useState, useRef } from 'react';
-import { X, Clock, Users, MapPin, ChevronUp, Banknote, ArrowRight } from 'lucide-react';
+import { useMemo, useState } from 'react';
+import { X, ChevronUp, Share2, Eye, EyeOff, Info } from 'lucide-react';
+import { toast } from 'sonner';
 import { type Route } from '@/data/routes';
+import {
+  coverage,
+  formatAge,
+  formatDistance,
+  vehiclesApproaching,
+  type Freshness,
+  type VehicleStatus,
+} from '@/lib/tracking/vehicleStatus';
+import { directionLabel, routeGeometry } from '@/lib/tracking/routeGeometry';
+import { buildShareUrl } from '@/lib/tracking/deepLink';
 
 interface RouteBottomSheetProps {
   route: Route;
+  vehicles: VehicleStatus[];
+  now: number;
+  stageIndex: number;
+  onStageChange: (index: number) => void;
+  followedId: string | null;
+  onFollow: (vehicleId: string | null) => void;
   onClose: () => void;
 }
 
-const RouteBottomSheet = ({ route, onClose }: RouteBottomSheetProps) => {
-  const [expanded, setExpanded] = useState(false);
+const FRESHNESS_STYLE: Record<Freshness, { dot: string; label: string }> = {
+  fresh: { dot: 'bg-accent', label: 'Live' },
+  aging: { dot: 'bg-warning', label: 'Delayed' },
+  stale: { dot: 'bg-muted-foreground', label: 'Last seen' },
+  hidden: { dot: 'bg-muted-foreground', label: 'Hidden' },
+};
 
-  // Simulated data
-  const eta = ['3 min', '7 min', '5 min', '12 min'][route.id - 1] || '5 min';
-  const fare = ['KSh 60', 'KSh 80', 'KSh 100', 'KSh 50'][route.id - 1] || 'KSh 70';
-  const seats = ['Few Seats', 'Full', 'Available', 'Few Seats'][route.id - 1] || 'Available';
-  const seatsColor = seats === 'Full' ? 'text-destructive' : seats === 'Available' ? 'text-accent' : 'text-warning';
-  const seatsBg = seats === 'Full' ? 'bg-destructive/10' : seats === 'Available' ? 'bg-accent/10' : 'bg-warning/10';
+const RouteBottomSheet = ({
+  route, vehicles, now, stageIndex, onStageChange, followedId, onFollow, onClose,
+}: RouteBottomSheetProps) => {
+  const [expanded, setExpanded] = useState(false);
+  const geo = routeGeometry(route);
+  const stage = route.stops[stageIndex];
+  const last = route.stops.length - 1;
+  const isSample = vehicles.some(v => v.source === 'sample');
+
+  const approaching = useMemo(
+    () => vehiclesApproaching(vehicles, geo.stageProgressM[stageIndex], now),
+    [vehicles, geo, stageIndex, now],
+  );
+  const cov = coverage(vehicles, now);
+  const nearest = approaching[0];
+
+  const share = async () => {
+    const url = buildShareUrl(window.location.origin, { route, stageIndex });
+    const text = `Matatus heading to ${stage.name} on route ${route.number}: ${url}`;
+    try {
+      if (navigator.share) await navigator.share({ title: 'Beacon', text, url });
+      else {
+        await navigator.clipboard.writeText(url);
+        toast.success('Link copied. Paste it in WhatsApp.');
+      }
+    } catch { /* user cancelled */ }
+  };
 
   return (
     <div className="absolute bottom-0 left-0 right-0 z-[1001] animate-fade-in">
-      {/* Handle bar + main info */}
-      <div className="bg-card/95 backdrop-blur-xl rounded-t-3xl border-t border-x border-border/30 shadow-[0_-8px_30px_rgba(0,0,0,0.15)]">
-        {/* Drag handle */}
-        <button onClick={() => setExpanded(!expanded)} className="w-full flex justify-center pt-3 pb-1">
+      <div className="bg-card/95 backdrop-blur-xl rounded-t-3xl border-t border-x border-border/30 shadow-[0_-8px_30px_rgba(0,0,0,0.15)] max-h-[75vh] flex flex-col">
+        <button onClick={() => setExpanded(!expanded)} className="w-full flex justify-center pt-3 pb-1" aria-label={expanded ? 'Collapse' : 'Expand'}>
           <div className="w-10 h-1 rounded-full bg-muted-foreground/30" />
         </button>
 
-        {/* Route header */}
-        <div className="px-5 pb-4">
-          <div className="flex items-center justify-between mb-4">
+        <div className="px-5 pb-3 overflow-y-auto">
+          {/* Route header */}
+          <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-3">
               <div className="w-11 h-11 rounded-xl flex items-center justify-center text-sm font-bold text-white shadow-md" style={{ backgroundColor: route.color }}>
                 {route.number}
               </div>
               <div>
                 <h3 className="font-bold text-base">{route.name}</h3>
-                <p className="text-xs text-muted-foreground">{route.stops.length} stops</p>
+                <p className="text-xs text-muted-foreground">{route.stops.length} stages</p>
               </div>
             </div>
-            <button onClick={onClose} className="p-2 rounded-full hover:bg-muted/30 transition-colors">
-              <X className="w-5 h-5 text-muted-foreground" />
-            </button>
+            <div className="flex items-center">
+              <button onClick={share} className="p-2 rounded-full hover:bg-muted/30" aria-label="Share this stage">
+                <Share2 className="w-5 h-5 text-muted-foreground" />
+              </button>
+              <button onClick={onClose} className="p-2 rounded-full hover:bg-muted/30" aria-label="Close route">
+                <X className="w-5 h-5 text-muted-foreground" />
+              </button>
+            </div>
           </div>
 
-          {/* Quick stats */}
-          <div className="grid grid-cols-3 gap-3">
-            <div className="bg-muted/30 rounded-xl p-3 text-center">
-              <Clock className="w-4 h-4 mx-auto mb-1 text-primary" />
-              <div className="text-sm font-bold">{eta}</div>
-              <div className="text-[10px] text-muted-foreground">Next Bus</div>
+          {isSample && (
+            <div className="flex items-center gap-2 text-[11px] font-medium bg-warning/15 text-warning rounded-lg px-3 py-1.5 mb-3" role="status">
+              <Info className="w-3.5 h-3.5 flex-shrink-0" />
+              Sample information. These are not real vehicles yet.
             </div>
-            <div className="bg-muted/30 rounded-xl p-3 text-center">
-              <Banknote className="w-4 h-4 mx-auto mb-1 text-accent" />
-              <div className="text-sm font-bold">{fare}</div>
-              <div className="text-[10px] text-muted-foreground">Fare</div>
-            </div>
-            <div className={`${seatsBg} rounded-xl p-3 text-center`}>
-              <Users className={`w-4 h-4 mx-auto mb-1 ${seatsColor}`} />
-              <div className={`text-sm font-bold ${seatsColor}`}>{seats}</div>
-              <div className="text-[10px] text-muted-foreground">Capacity</div>
-            </div>
+          )}
+
+          {/* Where are you waiting */}
+          <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">I'm waiting at</p>
+          <div className="flex gap-2 mb-3 flex-wrap">
+            {[0, last].map(i => (
+              <button
+                key={i}
+                onClick={() => onStageChange(i)}
+                className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${stageIndex === i ? 'bg-primary text-primary-foreground border-primary' : 'border-border hover:bg-muted/30'}`}
+              >
+                {route.stops[i].name} (terminus)
+              </button>
+            ))}
+            <select
+              aria-label="Choose another stage"
+              value={stageIndex !== 0 && stageIndex !== last ? stageIndex : ''}
+              onChange={e => e.target.value !== '' && onStageChange(Number(e.target.value))}
+              className="px-3 py-1.5 rounded-full text-xs border border-border bg-card"
+            >
+              <option value="">Other stage…</option>
+              {route.stops.map((s, i) => (i !== 0 && i !== last ? <option key={i} value={i}>{s.name}</option> : null))}
+            </select>
           </div>
+
+          {/* Plain-language status: answer first */}
+          <div className="bg-muted/30 rounded-xl p-3 mb-2" aria-live="polite">
+            {nearest ? (
+              <p className="text-sm">
+                <span className="font-bold">{approaching.length} {approaching.length === 1 ? 'matatu' : 'matatus'}</span> on the way to {stage.name}.
+                {' '}Nearest is about <span className="font-semibold">{formatDistance(nearest.distanceM)}</span> away,
+                last seen near {route.stops[nearest.vehicle.lastStageIndex].name}, updated {formatAge(nearest.vehicle.lastReportAt, now)}.
+              </p>
+            ) : (
+              <p className="text-sm">No matatus are reporting on their way to {stage.name} right now. Vehicles may still be running without sharing location.</p>
+            )}
+            <p className="text-[11px] text-muted-foreground mt-1.5">
+              {cov.reporting} of {cov.onShift} vehicles working this route are sharing location.
+            </p>
+          </div>
+
+          {/* Approaching vehicles */}
+          {approaching.length > 0 && (
+            <ul className="divide-y divide-border/20">
+              {(expanded ? approaching : approaching.slice(0, 3)).map(({ vehicle: v, distanceM, freshness }) => {
+                const f = FRESHNESS_STYLE[freshness];
+                const following = followedId === v.vehicleId;
+                return (
+                  <li key={v.vehicleId} className={`py-2.5 flex items-center gap-3 ${freshness === 'stale' ? 'opacity-60' : ''}`}>
+                    <span className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${f.dot}`} aria-hidden />
+                    <div className="flex-1 min-w-0">
+                      <div className="text-sm font-semibold">{v.plate} <span className="font-normal text-muted-foreground">toward {directionLabel(route, v.direction)}</span></div>
+                      <div className="text-[11px] text-muted-foreground">
+                        ~{formatDistance(distanceM)} · near {route.stops[v.lastStageIndex].name} · {f.label.toLowerCase()} {formatAge(v.lastReportAt, now)}
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => onFollow(following ? null : v.vehicleId)}
+                      className={`flex items-center gap-1 text-xs px-2.5 py-1.5 rounded-full border ${following ? 'bg-primary text-primary-foreground border-primary' : 'border-border hover:bg-muted/30'}`}
+                    >
+                      {following ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                      {following ? 'Following' : 'Follow'}
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+
+          {expanded && (
+            <p className="text-[11px] text-muted-foreground mt-2">
+              Following a matatu does not reserve a seat. Distances are approximate, not arrival times. Cash still works.
+            </p>
+          )}
         </div>
 
-        {/* Expanded: stops list */}
-        {expanded && (
-          <div className="px-5 pb-6 border-t border-border/20 pt-4 max-h-48 overflow-y-auto">
-            <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-3">Stops</p>
-            <div className="space-y-0">
-              {route.stops.map((stop, i) => (
-                <div key={i} className="flex items-start gap-3">
-                  <div className="flex flex-col items-center">
-                    <div
-                      className="w-3 h-3 rounded-full border-2 flex-shrink-0"
-                      style={{
-                        borderColor: route.color,
-                        backgroundColor: i === 0 || i === route.stops.length - 1 ? route.color : 'transparent',
-                      }}
-                    />
-                    {i < route.stops.length - 1 && (
-                      <div className="w-0.5 h-6 bg-border/50" />
-                    )}
-                  </div>
-                  <div className="pb-4">
-                    <span className={`text-sm ${i === 0 || i === route.stops.length - 1 ? 'font-semibold' : 'text-muted-foreground'}`}>
-                      {stop.name}
-                    </span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
+        {approaching.length > 3 || !expanded ? (
+          <button
+            onClick={() => setExpanded(!expanded)}
+            className="w-full py-2.5 flex items-center justify-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors border-t border-border/20"
+          >
+            <ChevronUp className={`w-4 h-4 transition-transform ${expanded ? 'rotate-180' : ''}`} />
+            {expanded ? 'Less' : 'More'}
+          </button>
+        ) : null}
 
-        {/* Expand toggle */}
-        <button
-          onClick={() => setExpanded(!expanded)}
-          className="w-full py-2.5 flex items-center justify-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors border-t border-border/20"
-        >
-          <ChevronUp className={`w-4 h-4 transition-transform ${expanded ? 'rotate-180' : ''}`} />
-          {expanded ? 'Less' : 'View all stops'}
-        </button>
-
-        {/* Safe area padding for bottom nav */}
-        <div className="h-16" />
+        <div className="h-16 flex-shrink-0" />
       </div>
     </div>
   );

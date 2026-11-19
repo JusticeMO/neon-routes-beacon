@@ -1,21 +1,20 @@
-import { useEffect, useState, useMemo, useCallback } from 'react';
+import { useEffect, useMemo } from 'react';
 import { Plus, Minus, Navigation } from 'lucide-react';
 import { Button } from './ui/button';
 import { MapContainer, TileLayer, Polyline, CircleMarker, useMap, Tooltip } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import { nairobiRoutes, type Route } from '@/data/routes';
 import { useTheme } from '@/contexts/ThemeContext';
-
-interface Bus {
-  id: number;
-  route: string;
-  position: { lat: number; lng: number };
-  status: 'moving' | 'stop';
-  progress: number;
-}
+import { freshnessOf, formatAge, isPubliclyVisible, type VehicleStatus } from '@/lib/tracking/vehicleStatus';
+import { directionLabel } from '@/lib/tracking/routeGeometry';
 
 interface GoogleMapViewProps {
   selectedRoute: Route | null;
+  vehicles: VehicleStatus[];
+  now: number;
+  stageIndex?: number;
+  followedId?: string | null;
+  onVehicleClick?: (vehicleId: string) => void;
 }
 
 const TILE_URLS = {
@@ -64,42 +63,19 @@ const FitToRoute = ({ route }: { route: Route | null }) => {
   return null;
 };
 
-const GoogleMapView = ({ selectedRoute }: GoogleMapViewProps) => {
-  const { theme } = useTheme();
-
-  const [buses, setBuses] = useState<Bus[]>(() =>
-    nairobiRoutes.map((route, i) => ({
-      id: i + 1,
-      route: route.number,
-      position: route.path[0],
-      status: 'moving',
-      progress: 0,
-    }))
-  );
-
+// Keep a followed vehicle in view
+const FollowVehicle = ({ vehicle }: { vehicle: VehicleStatus | undefined }) => {
+  const map = useMap();
+  const lat = vehicle?.position.lat;
+  const lng = vehicle?.position.lng;
   useEffect(() => {
-    const interval = setInterval(() => {
-      setBuses(prev => prev.map(bus => {
-        if (bus.status !== 'moving') return bus;
-        const route = nairobiRoutes.find(r => r.number === bus.route);
-        if (!route) return bus;
+    if (lat !== undefined && lng !== undefined) map.panTo([lat, lng], { animate: true });
+  }, [lat, lng, map]);
+  return null;
+};
 
-        let p = bus.progress + 0.003;
-        if (p >= route.path.length - 1) p = 0;
-
-        const idx = Math.floor(p);
-        const next = idx + 1;
-        const t = p - idx;
-
-        if (next < route.path.length) {
-          const s = route.path[idx], e = route.path[next];
-          return { ...bus, progress: p, position: { lat: s.lat + (e.lat - s.lat) * t, lng: s.lng + (e.lng - s.lng) * t } };
-        }
-        return bus;
-      }));
-    }, 50);
-    return () => clearInterval(interval);
-  }, []);
+const GoogleMapView = ({ selectedRoute, vehicles, now, stageIndex, followedId, onVehicleClick }: GoogleMapViewProps) => {
+  const { theme } = useTheme();
 
   const isDark = theme === 'dark' || theme === 'live';
   const glowIntensity = theme === 'live' ? 0.25 : theme === 'dark' ? 0.15 : 0.08;
@@ -132,9 +108,8 @@ const GoogleMapView = ({ selectedRoute }: GoogleMapViewProps) => {
 
   // Only show stops for selected route
   const visibleStops = selectedRoute ? selectedRoute.stops : [];
-  const visibleBuses = selectedRoute
-    ? buses.filter(b => b.route === selectedRoute.number)
-    : buses;
+  const visibleVehicles = vehicles.filter(v => isPubliclyVisible(v, now));
+  const followed = visibleVehicles.find(v => v.vehicleId === followedId);
 
   return (
     <div className="relative w-full h-full overflow-hidden">
@@ -156,10 +131,10 @@ const GoogleMapView = ({ selectedRoute }: GoogleMapViewProps) => {
           <CircleMarker
             key={`stop-${selectedRoute!.id}-${i}`}
             center={[stop.lat, stop.lng]}
-            radius={5}
+            radius={i === stageIndex ? 8 : 5}
             pathOptions={{
               color: selectedRoute!.color,
-              weight: 2,
+              weight: i === stageIndex ? 4 : 2,
               fillColor: isDark ? '#0f0f1a' : '#ffffff',
               fillOpacity: 1,
             }}
@@ -170,25 +145,32 @@ const GoogleMapView = ({ selectedRoute }: GoogleMapViewProps) => {
           </CircleMarker>
         ))}
 
-        {/* Bus markers */}
-        {visibleBuses.map(bus => {
-          const route = nairobiRoutes.find(r => r.number === bus.route);
+        <FollowVehicle vehicle={followed} />
+
+        {/* Vehicle markers: route colour, dimmed by data age, ringed when followed */}
+        {visibleVehicles.map(v => {
+          const route = nairobiRoutes.find(r => r.number === v.routeId);
           const color = route?.color || '#3B82F6';
+          const freshness = freshnessOf(v.lastReportAt, now);
+          const isFollowed = v.vehicleId === followedId;
+          const opacity = freshness === 'fresh' ? 1 : freshness === 'aging' ? 0.6 : 0.3;
           return (
             <CircleMarker
-              key={bus.id}
-              center={[bus.position.lat, bus.position.lng]}
-              radius={selectedRoute ? 9 : 6}
+              key={v.vehicleId}
+              center={[v.position.lat, v.position.lng]}
+              radius={isFollowed ? 12 : selectedRoute ? 9 : 6}
+              eventHandlers={{ click: () => onVehicleClick?.(v.vehicleId) }}
               pathOptions={{
-                color: isDark ? '#ffffff' : '#1a1a2e',
-                weight: 2.5,
-                fillColor: color,
-                fillOpacity: 1,
+                color: isFollowed ? '#facc15' : isDark ? '#ffffff' : '#1a1a2e',
+                weight: isFollowed ? 4 : 2.5,
+                fillColor: freshness === 'stale' ? '#9ca3af' : color,
+                fillOpacity: opacity,
+                opacity: Math.max(opacity, 0.5),
               }}
             >
-              {selectedRoute && (
-                <Tooltip permanent className="neon-tooltip">
-                  🚌 Route {bus.route}
+              {selectedRoute && route && (
+                <Tooltip direction="top" className="neon-tooltip">
+                  {v.plate} {v.direction === 'outbound' ? '→' : '←'} {directionLabel(route, v.direction)} · {formatAge(v.lastReportAt, now)}
                 </Tooltip>
               )}
             </CircleMarker>
