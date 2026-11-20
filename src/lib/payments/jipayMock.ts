@@ -15,6 +15,7 @@ export const jipayMock: PaymentProvider = {
     const receipt: Receipt = {
       transactionId: id,
       provider: 'Jipay',
+      method: 'jipay',
       routeNumber: req.routeNumber,
       routeName: req.routeName,
       vehiclePlate: req.vehiclePlate,
@@ -41,7 +42,7 @@ export function readReceipts(): Receipt[] {
   }
 }
 
-function saveReceipt(r: Receipt) {
+export function saveReceipt(r: Receipt) {
   try {
     localStorage.setItem(KEY, JSON.stringify([r, ...readReceipts()].slice(0, 50)));
   } catch {

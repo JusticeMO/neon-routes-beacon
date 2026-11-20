@@ -1,7 +1,7 @@
 import type { Receipt } from '@/lib/payments/provider';
 import type { VehicleStatus } from '@/lib/tracking/vehicleStatus';
 import { nairobiRoutes } from '@/data/routes';
-import { fareFor } from './demoMode';
+import { DEMO_SACCO_PAYMENTS, fareFor, paybillAccountFor } from './demoMode';
 
 /** Small deterministic PRNG so the seeded day's fares don't change on every render. */
 function rng(seed: number) {
@@ -10,7 +10,7 @@ function rng(seed: number) {
 }
 
 /**
- * SAMPLE Jipay fares from the last 10 hours (the working day so far). Stands in for
+ * SAMPLE fares (M-PESA PayBill and Jipay) from the last 10 hours (the working day so far). Stands in for
  * the transaction records the payment provider would supply to the SACCO.
  */
 export function samplePaymentsToday(vehicles: VehicleStatus[], now: number): Receipt[] {
@@ -23,9 +23,13 @@ export function samplePaymentsToday(vehicles: VehicleStatus[], now: number): Rec
     // Roughly one Jipay fare every 6 to 14 minutes per vehicle.
     for (let t = start + rand() * 600_000; t < now; t += 360_000 + rand() * 480_000) {
       const stage = route.stops[Math.floor(rand() * (route.stops.length - 1))].name;
+      const paybill = rand() < 0.65;
       out.push({
-        transactionId: `JPD${Math.floor(t / 1000).toString(36).toUpperCase()}${vi}`,
-        provider: 'Jipay',
+        transactionId: paybill ? `SK${Math.floor(t / 1000).toString(36).toUpperCase().slice(-6)}${vi}` : `JPD${Math.floor(t / 1000).toString(36).toUpperCase()}${vi}`,
+        provider: paybill ? 'M-PESA PayBill' : 'Jipay',
+        method: paybill ? 'mpesa-paybill' : 'jipay',
+        paybill: paybill ? DEMO_SACCO_PAYMENTS.mpesaPaybill : undefined,
+        accountRef: paybill ? paybillAccountFor(v.plate) : undefined,
         routeNumber: route.number,
         routeName: route.name,
         vehiclePlate: v.plate,

@@ -205,14 +205,14 @@ const Index = () => {
               </div>
               <div>
                 <h2 className="text-lg font-bold">Demo commuter</h2>
-                <p className="text-xs text-muted-foreground">Jipay wallet connected (demo)</p>
+                <p className="text-xs text-muted-foreground">M-PESA and Jipay (demo)</p>
               </div>
             </div>
 
             <div className="grid grid-cols-2 gap-3 mb-5">
               <div className="bg-card rounded-2xl p-3 text-center border border-border/30">
                 <div className="text-xl font-bold text-primary">{receipts.length}</div>
-                <div className="text-[10px] text-muted-foreground mt-0.5">Fares paid with Jipay</div>
+                <div className="text-[10px] text-muted-foreground mt-0.5">Fares paid in the app</div>
               </div>
               <div className="bg-card rounded-2xl p-3 text-center border border-border/30">
                 <div className="text-xl font-bold text-accent">KSh {spent.toLocaleString()}</div>
@@ -223,13 +223,13 @@ const Index = () => {
             <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Receipts</h3>
             <div className="bg-card rounded-2xl border border-border/30 divide-y divide-border/20 mb-5">
               {receipts.length === 0 && (
-                <p className="p-4 text-sm text-muted-foreground">No fares yet. Follow a matatu on the map and tap Pay to try a demo Jipay payment.</p>
+                <p className="p-4 text-sm text-muted-foreground">No fares yet. Follow a matatu on the map and tap Pay to try a demo M-PESA PayBill or Jipay payment.</p>
               )}
               {receipts.slice(0, 10).map(r => (
                 <div key={r.transactionId} className="px-4 py-3 flex items-center gap-3">
                   <Banknote className="w-4 h-4 text-muted-foreground" />
                   <div className="flex-1 min-w-0">
-                    <div className="text-sm font-medium">{r.vehiclePlate} · route {r.routeNumber}</div>
+                    <div className="text-sm font-medium">{r.vehiclePlate} · route {r.routeNumber} · {r.provider}</div>
                     <div className="text-[11px] text-muted-foreground">{r.boardingStage} · {new Date(r.paidAt).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })} · <span className="font-mono">{r.transactionId}</span></div>
                   </div>
                   <span className="text-sm font-semibold">KSh {r.amountKsh}</span>

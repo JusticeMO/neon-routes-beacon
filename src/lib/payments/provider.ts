@@ -13,9 +13,15 @@ export interface FareRequest {
   phone: string;
 }
 
+export type PaymentMethod = 'jipay' | 'mpesa-paybill';
+
 export interface Receipt {
   transactionId: string;
   provider: string;
+  method?: PaymentMethod;
+  /** M-PESA PayBill business number and account number, when paid by PayBill. */
+  paybill?: string;
+  accountRef?: string;
   routeNumber: string;
   routeName: string;
   vehiclePlate: string;

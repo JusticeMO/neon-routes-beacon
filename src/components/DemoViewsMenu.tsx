@@ -5,7 +5,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 export const DEMO_VIEWS = [
   { to: '/board', icon: MonitorPlay, label: 'Stage board', desc: 'Big-screen view of matatus heading into the CBD termini' },
   { to: '/crew', icon: Radio, label: 'Crew app', desc: 'Start a shift and share the vehicle location' },
-  { to: '/sacco', icon: Building2, label: 'SACCO dashboard', desc: 'Fleet coverage, exceptions and Jipay fares' },
+  { to: '/sacco', icon: Building2, label: 'SACCO dashboard', desc: 'Fleet coverage, exceptions and fares by PayBill and Jipay' },
 ];
 
 /** Switch between the demo's commuter, stage, crew and SACCO views. */

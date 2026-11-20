@@ -9,6 +9,21 @@ export const isDemoMode = !isBackendConfigured || import.meta.env.VITE_DEMO_MODE
 
 export const DEMO_SACCO = 'Beacon Demo SACCO';
 
+/**
+ * Payment setup the SACCO is given. Demo values: the PayBill number is a
+ * placeholder, not a real business number. Fares paid to the PayBill use the
+ * vehicle plate (no spaces) as the account number, so each fare is tied to
+ * the vehicle it was paid on.
+ */
+export const DEMO_SACCO_PAYMENTS = {
+  mpesaPaybill: '000 123',
+  jipayMerchant: 'BEACON-DEMO',
+};
+
+export function paybillAccountFor(plate: string): string {
+  return plate.replace(/\s+/g, '').toUpperCase();
+}
+
 /** Fare per route in KSh (demo values; real fares come from the SACCO's route setup). */
 const FARES: Record<string, { offPeak: number; peak: number }> = {
   '46': { offPeak: 60, peak: 80 },
