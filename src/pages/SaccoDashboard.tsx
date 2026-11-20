@@ -43,6 +43,7 @@ const SaccoDashboard = () => {
   const delayed = onShift.filter(v => freshnessOf(v.lastReportAt, now) === 'aging');
   const total = payments.reduce((s, p) => s + p.amountKsh, 0);
   const paybillTotal = payments.filter(p => p.method === 'mpesa-paybill').reduce((s, p) => s + p.amountKsh, 0);
+  const prizeTotal = payments.filter(p => p.method === 'prize' || p.method === 'points').reduce((s, p) => s + p.amountKsh, 0);
   const byVehicle = new Map<string, { n: number; sum: number }>();
   payments.forEach(p => {
     const e = byVehicle.get(p.vehicleId) ?? { n: 0, sum: 0 };
@@ -73,7 +74,7 @@ const SaccoDashboard = () => {
             { icon: Bus, label: 'Vehicles on shift', value: String(cov.onShift), sub: `${nairobiRoutes.length} routes` },
             { icon: Radio, label: 'Sharing location', value: `${cov.reporting} of ${cov.onShift}`, sub: `${Math.round((cov.reporting / Math.max(1, cov.onShift)) * 100)}% coverage` },
             { icon: AlertTriangle, label: 'Not reporting', value: String(exceptions.length), sub: `${delayed.length} delayed` },
-            { icon: Wallet, label: 'Fares paid in app, last 10 h', value: ksh(total), sub: `Jipay ${ksh(total - paybillTotal)} · SACCO PayBill ${ksh(paybillTotal)}` },
+            { icon: Wallet, label: 'Fares paid in app, last 10 h', value: ksh(total), sub: `Jipay ${ksh(total - paybillTotal - prizeTotal)} · SACCO PayBill ${ksh(paybillTotal)}${prizeTotal ? ` · rewards ${ksh(prizeTotal)}` : ''}` },
           ].map(({ icon: Icon, label, value, sub }) => (
             <div key={label} className="bg-card rounded-2xl border border-border/40 p-4">
               <div className="flex items-center gap-2 text-xs text-muted-foreground"><Icon className="w-4 h-4" />{label}</div>
@@ -175,7 +176,7 @@ const SaccoDashboard = () => {
               {payments.slice(0, 12).map(p => (
                 <li key={p.transactionId} className="py-2 flex items-center gap-3 border-b border-border/30">
                   <div className="flex-1 min-w-0">
-                    <div className="font-medium">{p.vehiclePlate} <span className="text-muted-foreground font-normal">· route {p.routeNumber} · {p.boardingStage}</span> <span className={`ml-1 text-[10px] font-semibold px-1.5 py-0.5 rounded-full ${p.method === 'mpesa-paybill' ? 'bg-accent/15 text-accent' : 'bg-primary/10 text-primary'}`}>{p.method === 'mpesa-paybill' ? 'SACCO PayBill' : 'Jipay'}</span></div>
+                    <div className="font-medium">{p.vehiclePlate} <span className="text-muted-foreground font-normal">· route {p.routeNumber} · {p.boardingStage}</span> <span className={`ml-1 text-[10px] font-semibold px-1.5 py-0.5 rounded-full ${p.method === 'mpesa-paybill' ? 'bg-accent/15 text-accent' : p.method === 'prize' || p.method === 'points' ? 'bg-warning/15 text-warning' : 'bg-primary/10 text-primary'}`}>{p.method === 'mpesa-paybill' ? 'SACCO PayBill' : p.method === 'prize' ? 'Tap prize' : p.method === 'points' ? 'Ad points' : 'Jipay'}</span></div>
                     <div className="text-[11px] text-muted-foreground font-mono">{p.transactionId} · {p.phoneMasked} · {new Date(p.paidAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
                   </div>
                   <div className="font-semibold tabular-nums">{ksh(p.amountKsh)}</div>

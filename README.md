@@ -28,6 +28,11 @@ With no backend configured, Beacon runs as a self-contained demo on simulated da
 | Crew app | `/crew` | Start/End shift; the vehicle then appears on the commuter map and stage board in other tabs of the same browser. |
 | SACCO dashboard | `/sacco` | Coverage, vehicles on shift but not reporting, supply heading into each CBD terminus, Jipay fares per vehicle. |
 
+Rewards while you wait (demo rules, all in `src/lib/demo/`):
+- **Watch ads for points**: a 15-second sponsored clip earns 10 Beacon points; 1 point = KSh 1 of fare, capped at 20 ads a day. With enough points for the fare, "Beacon points" appears as a payment option.
+- **Beacon Tap prize**: players at the same stage share a 5-minute round. Whoever tops the board when it closes gets their next fare (valid that day) paid by the round's sponsor. Other players are simulated.
+- In both cases the full fare still goes to the SACCO's PayBill with the vehicle plate as account number, funded by advertisers, so crews are paid as for any fare. In production the points balance, ad views and leaderboard must live on the backend, verified per phone number.
+
 What is simulated: vehicle positions, traffic speed by time of day (evening rush is slowest), fares (peak/off-peak), Jipay payments and receipts (stored in the browser only), ads. ETAs are estimates from distance and traffic speed.
 
 Map: set `VITE_GOOGLE_MAPS_API_KEY` to use Google Maps with the live traffic layer. With the key, each route is also snapped to real roads (Google driving directions through its stages), so route lines and matatus follow the streets. Enable **Maps JavaScript API** and **Directions API** on the key and restrict it to your site's domain. Without a key the app uses an open-source OpenStreetMap street map (CARTO tiles) and snaps routes to roads with open-source OSRM routing (the public demo server by default; set `VITE_OSRM_URL` to your own OSRM server for production).

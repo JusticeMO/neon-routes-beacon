@@ -15,7 +15,12 @@ export interface FareRequest {
   accountRef?: string;
 }
 
-export type PaymentMethod = 'jipay' | 'mpesa-paybill';
+/**
+ * 'prize': a Beacon Tap win; the round's sponsor pays the fare.
+ * 'points': Beacon points earned by watching ads; advertisers fund the fare.
+ * Both pay the SACCO's PayBill in full, so the crew is paid as for any fare.
+ */
+export type PaymentMethod = 'jipay' | 'mpesa-paybill' | 'prize' | 'points';
 
 export interface Receipt {
   transactionId: string;

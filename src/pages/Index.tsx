@@ -196,7 +196,7 @@ const Index = () => {
 
       case 'profile': {
         const receipts = readReceipts();
-        const spent = receipts.reduce((t, r) => t + r.amountKsh, 0);
+        const spent = receipts.filter(r => r.method !== 'prize' && r.method !== 'points').reduce((t, r) => t + r.amountKsh, 0);
         return (
           <div className="p-4 pb-24 overflow-y-auto h-full">
             <div className="pt-2 mb-6 flex items-center gap-4">

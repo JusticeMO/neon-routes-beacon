@@ -198,9 +198,9 @@ const RouteBottomSheet = ({
 
           {/* While you wait */}
           <div className="mt-3 space-y-2">
-            <SponsoredCard seed={stageIndex} />
+            <SponsoredCard seed={stageIndex} earn />
             {playing ? (
-              <BeaconTapGame onClose={() => setPlaying(false)} />
+              <BeaconTapGame stage={stage.name} now={now} onClose={() => setPlaying(false)} />
             ) : (
               <button onClick={() => setPlaying(true)} className="w-full flex items-center justify-center gap-2 text-xs font-medium py-2 rounded-xl border border-border/40 hover:bg-muted/30">
                 <Gamepad2 className="w-4 h-4 text-primary" /> Play Beacon Tap while you wait
