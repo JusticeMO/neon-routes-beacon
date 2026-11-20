@@ -43,3 +43,26 @@ export function routeGeometry(route: Route): RouteGeometry {
 export function directionLabel(route: Route, direction: 'outbound' | 'inbound'): string {
   return direction === 'outbound' ? route.stops[route.stops.length - 1].name : route.stops[0].name;
 }
+
+/**
+ * Points along the route behind a vehicle, oldest first, ending at its
+ * position. Used to draw the glowing trail on the map. Follows the route line
+ * rather than past GPS fixes, so it is a visual cue of direction, not history.
+ */
+export function trailBehind(
+  route: Route,
+  progressM: number,
+  direction: 'outbound' | 'inbound',
+  lengthM = 450,
+  stepM = 30,
+): { lat: number; lng: number }[] {
+  const geo = routeGeometry(route);
+  const sign = direction === 'outbound' ? -1 : 1;
+  const pts = [];
+  for (let d = lengthM; d >= 0; d -= stepM) {
+    const p = progressM + sign * d;
+    if (p < 0 || p > geo.lengthM) continue;
+    pts.push(geo.pointAt(p));
+  }
+  return pts;
+}

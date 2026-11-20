@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Loader } from '@googlemaps/js-api-loader';
 import { nairobiRoutes, type Route } from '@/data/routes';
 import { freshnessOf, formatAge, isPubliclyVisible, type VehicleStatus } from '@/lib/tracking/vehicleStatus';
-import { directionLabel } from '@/lib/tracking/routeGeometry';
+import { directionLabel, trailBehind } from '@/lib/tracking/routeGeometry';
 
 export interface MapProps {
   selectedRoute: Route | null;
@@ -27,6 +27,7 @@ const GoogleTrafficMap = ({ apiKey, onError, ...props }: MapProps & { apiKey: st
   const lines = useRef<google.maps.Polyline[]>([]);
   const stops = useRef<google.maps.Marker[]>([]);
   const markers = useRef(new Map<string, google.maps.Marker>());
+  const trails = useRef<google.maps.Polyline[]>([]);
   const clickRef = useRef(onVehicleClick);
   clickRef.current = onVehicleClick;
 
@@ -101,6 +102,25 @@ const GoogleTrafficMap = ({ apiKey, onError, ...props }: MapProps & { apiKey: st
         mk.setTitle(title);
       }
       if (followed) map.panTo(v.position);
+    }
+    // Glowing trails: redraw each tick, brightest at the vehicle.
+    trails.current.forEach(t => t.setMap(null));
+    trails.current = [];
+    for (const v of visible) {
+      const route = nairobiRoutes.find(r => r.number === v.routeId);
+      if (!route || freshnessOf(v.lastReportAt, now) === 'stale') continue;
+      const followed = v.vehicleId === followedId;
+      const pts = trailBehind(route, v.progressM, v.direction, followed ? 1400 : selectedRoute ? 900 : 650);
+      if (pts.length < 2) continue;
+      const color = followed ? '#facc15' : route.color;
+      const n = pts.length - 1;
+      trails.current.push(new google.maps.Polyline({ map, path: pts, strokeColor: color, strokeOpacity: 0.35, strokeWeight: followed ? 18 : 13, clickable: false, zIndex: 5 }));
+      for (let i = 0; i < n; i++) {
+        trails.current.push(new google.maps.Polyline({
+          map, path: [pts[i], pts[i + 1]], strokeColor: color, clickable: false, zIndex: 6,
+          strokeOpacity: ((i + 1) / n) ** 1.5 * 0.95, strokeWeight: (followed ? 7 : 5) * (0.4 + 0.6 * ((i + 1) / n)),
+        }));
+      }
     }
     for (const [id, mk] of markers.current) {
       if (!seen.has(id)) { mk.setMap(null); markers.current.delete(id); }
