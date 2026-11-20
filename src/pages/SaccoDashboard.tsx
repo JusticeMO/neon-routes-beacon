@@ -73,7 +73,7 @@ const SaccoDashboard = () => {
             { icon: Bus, label: 'Vehicles on shift', value: String(cov.onShift), sub: `${nairobiRoutes.length} routes` },
             { icon: Radio, label: 'Sharing location', value: `${cov.reporting} of ${cov.onShift}`, sub: `${Math.round((cov.reporting / Math.max(1, cov.onShift)) * 100)}% coverage` },
             { icon: AlertTriangle, label: 'Not reporting', value: String(exceptions.length), sub: `${delayed.length} delayed` },
-            { icon: Wallet, label: 'Fares paid in app, last 10 h', value: ksh(total), sub: `PayBill ${ksh(paybillTotal)} · Jipay ${ksh(total - paybillTotal)}` },
+            { icon: Wallet, label: 'Fares paid in app, last 10 h', value: ksh(total), sub: `Jipay ${ksh(total - paybillTotal)} · SACCO PayBill ${ksh(paybillTotal)}` },
           ].map(({ icon: Icon, label, value, sub }) => (
             <div key={label} className="bg-card rounded-2xl border border-border/40 p-4">
               <div className="flex items-center gap-2 text-xs text-muted-foreground"><Icon className="w-4 h-4" />{label}</div>
@@ -170,12 +170,12 @@ const SaccoDashboard = () => {
           {/* Payments */}
           <section className="bg-card rounded-2xl border border-border/40 p-4">
             <h2 className="text-sm font-semibold flex items-center gap-2"><Banknote className="w-4 h-4" /> Latest fares</h2>
-            <p className="text-xs text-muted-foreground mb-3">Mocked. PayBill fares use the vehicle plate as account number, so each fare is tied to a vehicle.</p>
+            <p className="text-xs text-muted-foreground mb-3">Mocked. SACCO PayBill and Jipay fares both carry the vehicle's account number, so each fare is tied to a vehicle.</p>
             <ul className="grid md:grid-cols-2 gap-x-6 text-sm">
               {payments.slice(0, 12).map(p => (
                 <li key={p.transactionId} className="py-2 flex items-center gap-3 border-b border-border/30">
                   <div className="flex-1 min-w-0">
-                    <div className="font-medium">{p.vehiclePlate} <span className="text-muted-foreground font-normal">· route {p.routeNumber} · {p.boardingStage}</span> <span className={`ml-1 text-[10px] font-semibold px-1.5 py-0.5 rounded-full ${p.method === 'mpesa-paybill' ? 'bg-accent/15 text-accent' : 'bg-primary/10 text-primary'}`}>{p.method === 'mpesa-paybill' ? 'PayBill' : 'Jipay'}</span></div>
+                    <div className="font-medium">{p.vehiclePlate} <span className="text-muted-foreground font-normal">· route {p.routeNumber} · {p.boardingStage}</span> <span className={`ml-1 text-[10px] font-semibold px-1.5 py-0.5 rounded-full ${p.method === 'mpesa-paybill' ? 'bg-accent/15 text-accent' : 'bg-primary/10 text-primary'}`}>{p.method === 'mpesa-paybill' ? 'SACCO PayBill' : 'Jipay'}</span></div>
                     <div className="text-[11px] text-muted-foreground font-mono">{p.transactionId} · {p.phoneMasked} · {new Date(p.paidAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
                   </div>
                   <div className="font-semibold tabular-nums">{ksh(p.amountKsh)}</div>

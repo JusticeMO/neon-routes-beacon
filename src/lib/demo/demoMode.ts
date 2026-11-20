@@ -17,8 +17,13 @@ export const DEMO_SACCO = 'Beacon Demo SACCO';
  */
 export const DEMO_SACCO_PAYMENTS = {
   mpesaPaybill: '000 123',
-  jipayMerchant: 'BEACON-DEMO',
 };
+
+/**
+ * Jipay's own PayBill (placeholder). It is fixed, so the commuter only enters
+ * the account number; Jipay routes the fare to the right SACCO and vehicle.
+ */
+export const JIPAY_PAYBILL = '000 456';
 
 export function paybillAccountFor(plate: string): string {
   return plate.replace(/\s+/g, '').toUpperCase();

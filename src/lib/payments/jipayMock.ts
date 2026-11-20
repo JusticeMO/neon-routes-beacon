@@ -1,8 +1,10 @@
 import { maskPhone, type FareRequest, type PaymentProvider, type Receipt } from './provider';
+import { JIPAY_PAYBILL, paybillAccountFor } from '@/lib/demo/demoMode';
 
 /**
- * MOCK Jipay wallet. Simulates the wallet confirming a fare after a short
- * delay. No network calls and no money moves. Replace with the real Jipay
+ * MOCK Jipay. Jipay gives one fixed PayBill, so the commuter only enters an
+ * account number (the vehicle's, shown on the matatu) and confirms the M-PESA
+ * prompt; Jipay settles the fare to the SACCO. Simulated after a short delay. No network calls and no money moves. Replace with the real Jipay
  * adapter once their API, settlement, refunds, transaction ids and
  * vehicle-level attribution are confirmed.
  */
@@ -16,6 +18,8 @@ export const jipayMock: PaymentProvider = {
       transactionId: id,
       provider: 'Jipay',
       method: 'jipay',
+      paybill: JIPAY_PAYBILL,
+      accountRef: paybillAccountFor(req.accountRef || req.vehiclePlate),
       routeNumber: req.routeNumber,
       routeName: req.routeName,
       vehiclePlate: req.vehiclePlate,

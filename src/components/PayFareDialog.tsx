@@ -8,7 +8,7 @@ import type { VehicleStatus } from '@/lib/tracking/vehicleStatus';
 import { jipayMock } from '@/lib/payments/jipayMock';
 import { mpesaPaybillMock } from '@/lib/payments/mpesaPaybillMock';
 import type { PaymentMethod, PaymentProvider, Receipt } from '@/lib/payments/provider';
-import { DEMO_SACCO, DEMO_SACCO_PAYMENTS, fareFor, isPeak, paybillAccountFor } from '@/lib/demo/demoMode';
+import { DEMO_SACCO, DEMO_SACCO_PAYMENTS, JIPAY_PAYBILL, fareFor, isPeak, paybillAccountFor } from '@/lib/demo/demoMode';
 
 interface Props {
   open: boolean;
@@ -36,13 +36,15 @@ const write = (k: string, v: string) => { try { localStorage.setItem(k, v); } ca
  */
 const PayFareDialog = ({ open, onOpenChange, route, vehicle, boardingStage }: Props) => {
   const [phone, setPhone] = useState(() => read(PHONE_KEY, '0712 345 678'));
-  const [method, setMethod] = useState<PaymentMethod>(() => (read(METHOD_KEY, 'mpesa-paybill') as PaymentMethod));
+  const [method, setMethod] = useState<PaymentMethod>(() => (read(METHOD_KEY, 'jipay') as PaymentMethod));
   const [state, setState] = useState<'form' | 'paying' | 'done'>('form');
   const [receipt, setReceipt] = useState<Receipt | null>(null);
   const [now] = useState(() => Date.now());
   const fare = fareFor(route.number, now);
   const paybill = DEMO_SACCO_PAYMENTS.mpesaPaybill;
   const account = paybillAccountFor(vehicle.plate);
+  // Jipay: the PayBill is fixed, the commuter only enters the account number (prefilled with this vehicle's).
+  const [jipayAccount, setJipayAccount] = useState(account);
 
   const pay = async () => {
     setState('paying');
@@ -56,6 +58,7 @@ const PayFareDialog = ({ open, onOpenChange, route, vehicle, boardingStage }: Pr
       boardingStage,
       amountKsh: fare,
       phone,
+      accountRef: method === 'jipay' ? jipayAccount : account,
     });
     setReceipt(r);
     setState('done');
@@ -67,8 +70,8 @@ const PayFareDialog = ({ open, onOpenChange, route, vehicle, boardingStage }: Pr
   };
 
   const options: { id: PaymentMethod; title: string; sub: string; icon: typeof Wallet }[] = [
-    { id: 'mpesa-paybill', title: 'M-PESA PayBill', sub: `${DEMO_SACCO} · PayBill ${paybill}`, icon: Smartphone },
-    { id: 'jipay', title: 'Jipay wallet', sub: 'Pay from your Jipay balance', icon: Wallet },
+    { id: 'jipay', title: 'Jipay', sub: 'Just the account number. Jipay sets the PayBill.', icon: Wallet },
+    { id: 'mpesa-paybill', title: 'SACCO PayBill', sub: `${DEMO_SACCO} · PayBill ${paybill}`, icon: Smartphone },
   ];
 
   return (
@@ -104,6 +107,15 @@ const PayFareDialog = ({ open, onOpenChange, route, vehicle, boardingStage }: Pr
               ))}
             </fieldset>
 
+            {method === 'jipay' && (
+              <div className="rounded-xl border border-dashed border-border p-3 text-xs space-y-2">
+                <div className="flex justify-between"><span className="text-muted-foreground">Jipay PayBill</span><span className="font-mono font-semibold">{JIPAY_PAYBILL} <span className="font-sans font-normal text-muted-foreground">(set)</span></span></div>
+                <label htmlFor="jipay-account" className="block text-muted-foreground">Account no. <span className="text-foreground">(on the matatu)</span></label>
+                <Input id="jipay-account" value={jipayAccount} onChange={e => setJipayAccount(e.target.value.toUpperCase())} className="font-mono" disabled={state === 'paying'} />
+                <p className="text-muted-foreground">Filled in for {vehicle.plate}. You confirm the M-PESA prompt on your phone; Jipay passes the fare to the SACCO.</p>
+              </div>
+            )}
+
             {method === 'mpesa-paybill' && (
               <div className="rounded-xl border border-dashed border-border p-3 text-xs space-y-1">
                 <div className="flex justify-between"><span className="text-muted-foreground">Business no.</span><span className="font-mono font-semibold">{paybill}</span></div>
@@ -112,11 +124,11 @@ const PayFareDialog = ({ open, onOpenChange, route, vehicle, boardingStage }: Pr
               </div>
             )}
 
-            <label htmlFor="pay-phone" className="text-xs font-medium text-muted-foreground">{method === 'jipay' ? 'Jipay wallet phone number' : 'M-PESA phone number'}</label>
+            <label htmlFor="pay-phone" className="text-xs font-medium text-muted-foreground">M-PESA phone number</label>
             <Input id="pay-phone" value={phone} onChange={e => setPhone(e.target.value)} inputMode="tel" disabled={state === 'paying'} />
-            <Button onClick={pay} disabled={state === 'paying' || phone.replace(/\D/g, '').length < 9} className="w-full">
+            <Button onClick={pay} disabled={state === 'paying' || phone.replace(/\D/g, '').length < 9 || (method === 'jipay' && jipayAccount.trim().length < 3)} className="w-full">
               {state === 'paying'
-                ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> {method === 'jipay' ? 'Waiting for Jipay…' : 'Check your phone for the M-PESA prompt…'}</>
+                ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Check your phone for the M-PESA prompt…</>
                 : `Pay KSh ${fare}`}
             </Button>
             <p className="text-[11px] text-muted-foreground text-center">Paying does not reserve a seat. Cash still works on board.</p>

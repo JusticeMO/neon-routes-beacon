@@ -11,6 +11,8 @@ export interface FareRequest {
   boardingStage: string;
   amountKsh: number;
   phone: string;
+  /** Account number the commuter entered (Jipay PayBill). Defaults to the vehicle plate. */
+  accountRef?: string;
 }
 
 export type PaymentMethod = 'jipay' | 'mpesa-paybill';

@@ -1,7 +1,7 @@
 import type { Receipt } from '@/lib/payments/provider';
 import type { VehicleStatus } from '@/lib/tracking/vehicleStatus';
 import { nairobiRoutes } from '@/data/routes';
-import { DEMO_SACCO_PAYMENTS, fareFor, paybillAccountFor } from './demoMode';
+import { DEMO_SACCO_PAYMENTS, JIPAY_PAYBILL, fareFor, paybillAccountFor } from './demoMode';
 
 /** Small deterministic PRNG so the seeded day's fares don't change on every render. */
 function rng(seed: number) {
@@ -26,10 +26,10 @@ export function samplePaymentsToday(vehicles: VehicleStatus[], now: number): Rec
       const paybill = rand() < 0.65;
       out.push({
         transactionId: paybill ? `SK${Math.floor(t / 1000).toString(36).toUpperCase().slice(-6)}${vi}` : `JPD${Math.floor(t / 1000).toString(36).toUpperCase()}${vi}`,
-        provider: paybill ? 'M-PESA PayBill' : 'Jipay',
+        provider: paybill ? 'SACCO PayBill (M-PESA)' : 'Jipay',
         method: paybill ? 'mpesa-paybill' : 'jipay',
-        paybill: paybill ? DEMO_SACCO_PAYMENTS.mpesaPaybill : undefined,
-        accountRef: paybill ? paybillAccountFor(v.plate) : undefined,
+        paybill: paybill ? DEMO_SACCO_PAYMENTS.mpesaPaybill : JIPAY_PAYBILL,
+        accountRef: paybillAccountFor(v.plate),
         routeNumber: route.number,
         routeName: route.name,
         vehiclePlate: v.plate,

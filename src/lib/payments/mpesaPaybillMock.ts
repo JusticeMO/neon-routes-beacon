@@ -17,7 +17,7 @@ export const mpesaPaybillMock: PaymentProvider = {
     const id = 'SK' + Array.from({ length: 8 }, () => chars[Math.floor(Math.random() * chars.length)]).join('');
     const receipt: Receipt = {
       transactionId: id,
-      provider: 'M-PESA PayBill',
+      provider: 'SACCO PayBill (M-PESA)',
       method: 'mpesa-paybill',
       paybill: DEMO_SACCO_PAYMENTS.mpesaPaybill,
       accountRef: paybillAccountFor(req.vehiclePlate),
