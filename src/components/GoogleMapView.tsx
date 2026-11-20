@@ -7,6 +7,7 @@ import { nairobiRoutes, type Route } from '@/data/routes';
 import { useTheme } from '@/contexts/ThemeContext';
 import { freshnessOf, formatAge, isPubliclyVisible, type VehicleStatus } from '@/lib/tracking/vehicleStatus';
 import { directionLabel, trailBehind } from '@/lib/tracking/routeGeometry';
+import { useRoadPathsVersion } from '@/lib/tracking/roadPaths';
 
 interface GoogleMapViewProps {
   selectedRoute: Route | null;
@@ -102,6 +103,7 @@ const FollowVehicle = ({ vehicle }: { vehicle: VehicleStatus | undefined }) => {
 
 const GoogleMapView = ({ selectedRoute, vehicles, now, stageIndex, followedId, onVehicleClick }: GoogleMapViewProps) => {
   const { theme } = useTheme();
+  const roadVersion = useRoadPathsVersion();
 
   const isDark = theme === 'dark' || theme === 'live';
   const glowIntensity = theme === 'live' ? 0.25 : theme === 'dark' ? 0.15 : 0.08;
@@ -131,7 +133,9 @@ const GoogleMapView = ({ selectedRoute, vehicles, now, stageIndex, followedId, o
         ];
       }),
     ];
-  }, [selectedRoute, theme, isDark, glowIntensity]);
+    // roadVersion: redraw when routes are snapped to roads.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedRoute, theme, isDark, glowIntensity, roadVersion]);
 
   // Only show stops for selected route
   const visibleStops = selectedRoute ? selectedRoute.stops : [];

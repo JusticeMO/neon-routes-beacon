@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
-import { Loader } from '@googlemaps/js-api-loader';
 import { nairobiRoutes, type Route } from '@/data/routes';
 import { freshnessOf, formatAge, isPubliclyVisible, type VehicleStatus } from '@/lib/tracking/vehicleStatus';
 import { directionLabel, trailBehind } from '@/lib/tracking/routeGeometry';
+import { googleLoader } from '@/lib/tracking/snapRoutes';
+import { useRoadPathsVersion } from '@/lib/tracking/roadPaths';
 
 export interface MapProps {
   selectedRoute: Route | null;
@@ -20,7 +21,7 @@ const CENTER = { lat: -1.2864, lng: 36.8172 };
  * VITE_GOOGLE_MAPS_API_KEY is set; otherwise Beacon uses the Leaflet map.
  * Same props as the Leaflet map so the screens don't care which one renders.
  */
-const GoogleTrafficMap = ({ apiKey, onError, ...props }: MapProps & { apiKey: string; onError: () => void }) => {
+const GoogleTrafficMap = ({ onError, ...props }: MapProps & { onError: () => void }) => {
   const { selectedRoute, vehicles, now, stageIndex, followedId, onVehicleClick } = props;
   const el = useRef<HTMLDivElement>(null);
   const [map, setMap] = useState<google.maps.Map | null>(null);
@@ -28,13 +29,15 @@ const GoogleTrafficMap = ({ apiKey, onError, ...props }: MapProps & { apiKey: st
   const stops = useRef<google.maps.Marker[]>([]);
   const markers = useRef(new Map<string, google.maps.Marker>());
   const trails = useRef<google.maps.Polyline[]>([]);
+  const roadVersion = useRoadPathsVersion();
   const clickRef = useRef(onVehicleClick);
   clickRef.current = onVehicleClick;
 
   useEffect(() => {
     let cancelled = false;
-    new Loader({ apiKey, version: 'weekly' })
-      .importLibrary('maps')
+    const loader = googleLoader();
+    if (!loader) { onError(); return; }
+    loader.importLibrary('maps')
       .then(({ Map, TrafficLayer }) => {
         if (cancelled || !el.current) return;
         const m = new Map(el.current, { center: CENTER, zoom: 14, disableDefaultUI: true, zoomControl: true, clickableIcons: false });
@@ -43,7 +46,7 @@ const GoogleTrafficMap = ({ apiKey, onError, ...props }: MapProps & { apiKey: st
       })
       .catch(onError);
     return () => { cancelled = true; };
-  }, [apiKey, onError]);
+  }, [onError]);
 
   // Route lines; selected route bold, the rest faint.
   useEffect(() => {
@@ -70,7 +73,7 @@ const GoogleTrafficMap = ({ apiKey, onError, ...props }: MapProps & { apiKey: st
       selectedRoute.path.forEach(p => b.extend(p));
       map.fitBounds(b, 50);
     }
-  }, [map, selectedRoute, stageIndex]);
+  }, [map, selectedRoute, stageIndex, roadVersion]);
 
   // Vehicle markers, updated in place.
   useEffect(() => {

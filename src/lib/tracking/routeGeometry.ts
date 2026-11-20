@@ -11,10 +11,11 @@ export interface RouteGeometry {
   lastStageIndex: (progressM: number, direction: 'outbound' | 'inbound') => number;
 }
 
-const cache = new Map<string, RouteGeometry>();
+// Keyed by the path array, so replacing a route's path (snapping it to roads) recomputes.
+const cache = new WeakMap<object, RouteGeometry>();
 
 export function routeGeometry(route: Route): RouteGeometry {
-  const key = route.number;
+  const key = route.path;
   const hit = cache.get(key);
   if (hit) return hit;
   const cum = cumulativeDistances(route.path);
