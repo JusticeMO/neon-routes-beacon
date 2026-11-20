@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Navigate } from 'react-router-dom';
+import { Link, Navigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -26,13 +26,14 @@ const Auth = () => {
           <h1 className="text-lg font-bold">Sign-in is not set up yet</h1>
           <p className="text-sm text-muted-foreground">
             This copy of Beacon is not connected to a backend, so SACCO and admin sign-in are unavailable.
-            Route tracking still works on sample data.
+            Route tracking, the stage board, the crew app and the SACCO dashboard all run on demo data.
           </p>
           <p className="text-sm text-muted-foreground">
             To enable sign-in, set <code>VITE_SUPABASE_URL</code> and <code>VITE_SUPABASE_ANON_KEY</code> in
             <code> .env</code> (see <code>.env.example</code> and the README).
           </p>
-          <Button asChild variant="outline" className="w-full"><a href="/">Back to the map</a></Button>
+          <Button asChild className="w-full"><Link to="/sacco">Open the demo SACCO dashboard</Link></Button>
+          <Button asChild variant="outline" className="w-full"><Link to="/">Back to the map</Link></Button>
         </div>
       </div>
     );

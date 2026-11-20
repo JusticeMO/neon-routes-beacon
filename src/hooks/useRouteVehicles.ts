@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import type { Route } from '@/data/routes';
+import { nairobiRoutes, type Route } from '@/data/routes';
 import { sampleVehicles } from '@/data/sampleVehicles';
 import type { VehicleStatus } from '@/lib/tracking/vehicleStatus';
 
@@ -20,4 +20,9 @@ export function useNow(intervalMs = 1000): number {
 export function useRouteVehicles(route: Route | null, now: number): VehicleStatus[] {
   // Sample positions only change on each 10 s report, so recompute per second is cheap.
   return useMemo(() => (route ? sampleVehicles(route, now) : []), [route, now]);
+}
+
+/** Every route's vehicles, for the overview map, stage boards and the SACCO view. */
+export function useAllVehicles(now: number): VehicleStatus[] {
+  return useMemo(() => nairobiRoutes.flatMap(r => sampleVehicles(r, now)), [now]);
 }

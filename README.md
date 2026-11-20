@@ -17,6 +17,29 @@ npm run dev            # http://localhost:8080
 
 Other scripts: `npm run build`, `npm run preview`, `npm run typecheck`, `npm run lint`.
 
+## Demo mode
+
+With no backend configured, Beacon runs as a self-contained demo on simulated data. Nothing needs to be set up.
+
+| Screen | URL | What it shows |
+| --- | --- | --- |
+| Commuter app | `/` | Pick a route and your stage, see matatus heading there with estimated minutes, follow one, pay the fare with Jipay (mocked), and an ad slot plus the Beacon Tap game while you wait. Receipts are under Profile. |
+| Stage board | `/board`, `/board?stage=46-kencom` | Big-screen board for the CBD termini, built for the end-of-day queue. |
+| Crew app | `/crew` | Start/End shift; the vehicle then appears on the commuter map and stage board in other tabs of the same browser. |
+| SACCO dashboard | `/sacco` | Coverage, vehicles on shift but not reporting, supply heading into each CBD terminus, Jipay fares per vehicle. |
+
+What is simulated: vehicle positions, traffic speed by time of day (evening rush is slowest), fares (peak/off-peak), Jipay payments and receipts (stored in the browser only), ads. ETAs are estimates from distance and traffic speed.
+
+Map: set `VITE_GOOGLE_MAPS_API_KEY` to use Google Maps with the live traffic layer; otherwise the free OpenStreetMap map is used.
+
+### Put the demo online
+
+`npm run build`, then upload `dist/` to any static host. Quickest options:
+- **Netlify Drop**: drag the `dist` folder onto https://app.netlify.com/drop. `public/_redirects` already handles page links like `/board`.
+- **Vercel**: import the repo; `vercel.json` handles page links. Build command `npm run build`, output `dist`.
+
+Leave the `VITE_SUPABASE_*` variables unset on the host to keep it in demo mode.
+
 ## Backend
 
 Beacon uses a standard [Supabase](https://supabase.com) project (Postgres + Auth) that **you** own. Nothing is tied to any app-builder platform.

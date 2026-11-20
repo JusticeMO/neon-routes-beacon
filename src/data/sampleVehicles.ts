@@ -1,6 +1,8 @@
 import type { Route } from './routes';
 import { routeGeometry } from '@/lib/tracking/routeGeometry';
 import type { VehicleStatus } from '@/lib/tracking/vehicleStatus';
+import { readCrewShift } from '@/lib/demo/crewShift';
+import { DEMO_SACCO } from '@/lib/demo/demoMode';
 
 /**
  * SAMPLE tracking source. Simulates matatus shuttling between a route's two
@@ -41,7 +43,8 @@ function plateFor(route: Route, suffix: string, i: number): string {
 export function sampleVehicles(route: Route, now: number): VehicleStatus[] {
   const geo = routeGeometry(route);
   const loopM = geo.lengthM * 2;
-  return FLEET.map((v, i) => {
+  const crew = crewVehicle(route, now);
+  const fleet = FLEET.map((v, i) => {
     const reportedAt = Math.floor((now - v.silentForMs) / REPORT_INTERVAL_MS) * REPORT_INTERVAL_MS;
     const travelled = (v.phase * loopM + (reportedAt / 1000) * SPEED_MPS) % loopM;
     const outbound = travelled < geo.lengthM;
@@ -51,7 +54,7 @@ export function sampleVehicles(route: Route, now: number): VehicleStatus[] {
       vehicleId: `sample-${route.number}-${v.suffix}`,
       routeId: route.number,
       plate: plateFor(route, v.suffix, i),
-      saccoName: 'Sample SACCO',
+      saccoName: DEMO_SACCO,
       direction,
       position: geo.pointAt(progressM),
       progressM,
@@ -61,4 +64,36 @@ export function sampleVehicles(route: Route, now: number): VehicleStatus[] {
       onShift: v.onShift,
     } satisfies VehicleStatus;
   });
+  return crew ? [crew, ...fleet] : fleet;
+}
+
+/**
+ * The vehicle a demo crew member started a shift on (see the /crew screen).
+ * It leaves its starting terminus when the shift starts and shuttles at
+ * sample speed, reporting every 5 s.
+ */
+function crewVehicle(route: Route, now: number): VehicleStatus | null {
+  const shift = readCrewShift();
+  if (!shift || shift.routeNumber !== route.number) return null;
+  const geo = routeGeometry(route);
+  const loopM = geo.lengthM * 2;
+  const reportedAt = Math.max(shift.startedAt, Math.floor(now / 5000) * 5000);
+  const start = shift.direction === 'outbound' ? 0 : geo.lengthM;
+  const travelled = (start + ((reportedAt - shift.startedAt) / 1000) * SPEED_MPS) % loopM;
+  const outbound = travelled < geo.lengthM;
+  const progressM = outbound ? travelled : loopM - travelled;
+  const direction = outbound ? 'outbound' : 'inbound';
+  return {
+    vehicleId: `crew-${shift.plate.replace(/\s+/g, '')}`,
+    routeId: route.number,
+    plate: shift.plate,
+    saccoName: DEMO_SACCO,
+    direction,
+    position: geo.pointAt(progressM),
+    progressM,
+    lastStageIndex: geo.lastStageIndex(progressM, direction),
+    lastReportAt: new Date(reportedAt).toISOString(),
+    source: 'sample',
+    onShift: true,
+  };
 }

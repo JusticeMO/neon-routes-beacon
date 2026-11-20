@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import beaconCircuitBg from '../assets/beacon-circuit-bg.jpg';
 
 interface SplashScreenProps {
@@ -8,14 +8,20 @@ interface SplashScreenProps {
 const SplashScreen = ({ onComplete }: SplashScreenProps) => {
   const [isAnimating, setIsAnimating] = useState(true);
 
+  // Keep the latest callback in a ref so parent re-renders (the live clock
+  // ticks every second) don't restart the timer and keep the splash up forever.
+  const done = useRef(onComplete);
+  done.current = onComplete;
+
   useEffect(() => {
+    let inner: ReturnType<typeof setTimeout>;
     const timer = setTimeout(() => {
       setIsAnimating(false);
-      setTimeout(() => onComplete(), 500);
-    }, 3000);
+      inner = setTimeout(() => done.current(), 500);
+    }, 2500);
 
-    return () => clearTimeout(timer);
-  }, [onComplete]);
+    return () => { clearTimeout(timer); clearTimeout(inner); };
+  }, []);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-background circuit-bg overflow-hidden">
