@@ -58,7 +58,8 @@ const FitToRoute = ({ route }: { route: Route | null }) => {
     const lngs = route.path.map(p => p.lng);
     map.fitBounds(
       [[Math.min(...lats), Math.min(...lngs)], [Math.max(...lats), Math.max(...lngs)]],
-      { padding: [50, 50], maxZoom: 15 }
+      // Keep the route clear of the search bar on top and the route sheet's header at the bottom.
+      { paddingTopLeft: [30, 150], paddingBottomRight: [30, 230], maxZoom: 15 }
     );
   }, [route, map]);
   return null;
@@ -171,7 +172,8 @@ const GoogleMapView = ({ selectedRoute, vehicles, now, stageIndex, followedId, o
               fillOpacity: 1,
             }}
           >
-            <Tooltip permanent className="neon-tooltip" direction="top" offset={[0, -8]}>
+            {/* Name the termini and your stage; other stages show their name on tap, so labels don't pile up. */}
+            <Tooltip permanent={i === 0 || i === visibleStops.length - 1 || i === stageIndex} className="neon-tooltip" direction="top" offset={[0, -8]}>
               {stop.name}
             </Tooltip>
           </CircleMarker>

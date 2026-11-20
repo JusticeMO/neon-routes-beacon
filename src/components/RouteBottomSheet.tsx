@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { X, ChevronUp, Share2, Eye, EyeOff, Info, Wallet, MonitorPlay, Gamepad2, Car } from 'lucide-react';
+import { X, ChevronUp, Map as MapIcon, Share2, Eye, EyeOff, Info, Wallet, MonitorPlay, Gamepad2, Car } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import PayFareDialog from './PayFareDialog';
 import { BeaconTapGame, SponsoredCard } from './WhileYouWait';
@@ -41,6 +41,8 @@ const RouteBottomSheet = ({
   const [expanded, setExpanded] = useState(false);
   const [payOpen, setPayOpen] = useState(false);
   const [playing, setPlaying] = useState(false);
+  // Shrink the sheet to its header so the route is visible on the map.
+  const [minimized, setMinimized] = useState(false);
   const geo = routeGeometry(route);
   const stage = route.stops[stageIndex];
   const last = route.stops.length - 1;
@@ -70,7 +72,7 @@ const RouteBottomSheet = ({
   return (
     <div className="absolute bottom-0 left-0 right-0 z-[1001] animate-fade-in">
       <div className="bg-card/95 backdrop-blur-xl rounded-t-3xl border-t border-x border-border/30 shadow-[0_-8px_30px_rgba(0,0,0,0.15)] max-h-[75vh] flex flex-col">
-        <button onClick={() => setExpanded(!expanded)} className="w-full flex justify-center pt-3 pb-1" aria-label={expanded ? 'Collapse' : 'Expand'}>
+        <button onClick={() => setMinimized(m => !m)} className="w-full flex justify-center pt-3 pb-1" aria-label={minimized ? 'Show details' : 'Show the map'}>
           <div className="w-10 h-1 rounded-full bg-muted-foreground/30" />
         </button>
 
@@ -87,6 +89,9 @@ const RouteBottomSheet = ({
               </div>
             </div>
             <div className="flex items-center">
+              <button onClick={() => setMinimized(m => !m)} className={`p-2 rounded-full hover:bg-muted/30 ${minimized ? 'text-primary' : 'text-muted-foreground'}`} aria-label={minimized ? 'Show details' : 'Show the map'}>
+                {minimized ? <ChevronUp className="w-5 h-5" /> : <MapIcon className="w-5 h-5" />}
+              </button>
               <button onClick={share} className="p-2 rounded-full hover:bg-muted/30" aria-label="Share this stage">
                 <Share2 className="w-5 h-5 text-muted-foreground" />
               </button>
@@ -96,6 +101,14 @@ const RouteBottomSheet = ({
             </div>
           </div>
 
+          {minimized && (
+            <button onClick={() => setMinimized(false)} className="w-full text-left text-xs text-muted-foreground">
+              {nearest ? <><b className="text-foreground">{approaching.length} on the way</b> to {stage.name}. Nearest ~{etaMinutes(nearest.distanceM, now)} min. </> : <>No matatus reporting toward {stage.name}. </>}
+              <span className="text-primary font-medium">Show details</span>
+            </button>
+          )}
+
+          <div className={minimized ? 'hidden' : ''}>
           {isSample && (
             <div className="flex items-center gap-2 text-[11px] font-medium bg-warning/15 text-warning rounded-lg px-3 py-1.5 mb-3" role="status">
               <Info className="w-3.5 h-3.5 flex-shrink-0" />
@@ -207,9 +220,10 @@ const RouteBottomSheet = ({
               </button>
             )}
           </div>
+          </div>
         </div>
 
-        {approaching.length > 3 || !expanded ? (
+        {!minimized && (approaching.length > 3 || !expanded) ? (
           <button
             onClick={() => setExpanded(!expanded)}
             className="w-full py-2.5 flex items-center justify-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors border-t border-border/20"

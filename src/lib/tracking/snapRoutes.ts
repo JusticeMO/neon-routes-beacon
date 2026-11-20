@@ -14,11 +14,11 @@ export function googleLoader(): Loader | null {
 let started = false;
 
 /**
- * Open-source routing (OSRM on OpenStreetMap roads). Defaults to the public
- * OSRM demo server, which is fine for a demo; point VITE_OSRM_URL at your own
- * OSRM server for production.
+ * Route paths ship already following OpenStreetMap roads (see src/data/routes.ts),
+ * so live re-routing is optional: set VITE_OSRM_URL to your own OSRM server to
+ * re-snap routes in the browser after you edit their stages.
  */
-const OSRM_URL = ((import.meta.env.VITE_OSRM_URL as string | undefined) || 'https://router.project-osrm.org').replace(/\/$/, '');
+const OSRM_URL = ((import.meta.env.VITE_OSRM_URL as string | undefined) || '').replace(/\/$/, '');
 
 async function snapWithOsrm(): Promise<void> {
   for (const route of nairobiRoutes) {
@@ -40,14 +40,14 @@ async function snapWithOsrm(): Promise<void> {
 
 /**
  * Snap every route to real roads through its stages, in order: Google
- * directions when a Google Maps key is set, otherwise open-source OSRM on
- * OpenStreetMap. Failures leave the drawn path in place.
+ * directions when a Google Maps key is set, or your own OSRM server when
+ * VITE_OSRM_URL is set. Otherwise the shipped road paths are used as they are.
  */
 export async function snapRoutesToRoads(): Promise<void> {
   if (started) return;
   started = true;
   const l = googleLoader();
-  if (!l) return snapWithOsrm();
+  if (!l) return OSRM_URL ? snapWithOsrm() : undefined;
   const { DirectionsService } = await l.importLibrary('routes');
   const svc = new DirectionsService();
   for (const route of nairobiRoutes) {

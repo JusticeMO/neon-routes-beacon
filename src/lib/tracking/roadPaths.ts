@@ -9,7 +9,7 @@ import type { LatLng } from './geo';
  * stages and the result replaces the route's path, so lines and matatus follow
  * the streets. Results are cached in this browser for a week.
  */
-const KEY = 'beacon.roadPaths.v1';
+const KEY = 'beacon.roadPaths.v2';
 const MAX_AGE_MS = 7 * 24 * 3_600_000;
 let version = 0;
 const listeners = new Set<() => void>();
