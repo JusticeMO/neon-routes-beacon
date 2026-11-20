@@ -17,6 +17,34 @@ npm run dev            # http://localhost:8080
 
 Other scripts: `npm run build`, `npm run preview`, `npm run typecheck`, `npm run lint`.
 
+## Demo mode
+
+With no backend configured, Beacon runs as a self-contained demo on simulated data. Nothing needs to be set up.
+
+| Screen | URL | What it shows |
+| --- | --- | --- |
+| Commuter app | `/` | Pick a route and your stage, see matatus heading there with estimated minutes, follow one, pay the fare with Jipay (mocked), and an ad slot plus the Beacon Tap game while you wait. Receipts are under Profile. |
+| Stage board | `/board`, `/board?stage=46-kencom` | Big-screen board for the CBD termini, built for the end-of-day queue. |
+| Crew app | `/crew` | Start/End shift; the vehicle then appears on the commuter map and stage board in other tabs of the same browser. |
+| SACCO dashboard | `/sacco` | Coverage, vehicles on shift but not reporting, supply heading into each CBD terminus, Jipay fares per vehicle. |
+
+Rewards while you wait (demo rules, all in `src/lib/demo/`):
+- **Watch ads for points**: a 15-second sponsored clip earns 10 Beacon points; 1 point = KSh 1 of fare, capped at 20 ads a day. With enough points for the fare, "Beacon points" appears as a payment option.
+- **Beacon Tap prize**: players at the same stage share a 5-minute round. Whoever tops the board when it closes gets their next fare (valid that day) paid by the round's sponsor. Other players are simulated.
+- In both cases the full fare still goes to the SACCO's PayBill with the vehicle plate as account number, funded by advertisers, so crews are paid as for any fare. In production the points balance, ad views and leaderboard must live on the backend, verified per phone number.
+
+What is simulated: vehicle positions, traffic speed by time of day (evening rush is slowest), fares (peak/off-peak), Jipay payments and receipts (stored in the browser only), ads. ETAs are estimates from distance and traffic speed.
+
+Map: set `VITE_GOOGLE_MAPS_API_KEY` to use Google Maps with the live traffic layer. With the key, each route is also snapped to real roads (Google driving directions through its stages), so route lines and matatus follow the streets. Enable **Maps JavaScript API** and **Directions API** on the key and restrict it to your site's domain. Without a key the app uses an open-source OpenStreetMap street map (CARTO tiles). Route lines ship already following real roads, routed over OpenStreetMap data with the scripts in `scripts/route-paths/`, so no routing server is needed. Set `VITE_OSRM_URL` to your own OSRM server only if you want routes re-snapped in the browser.
+
+### Put the demo online
+
+`npm run build`, then upload `dist/` to any static host. Quickest options:
+- **Netlify Drop**: drag the `dist` folder onto https://app.netlify.com/drop. `public/_redirects` already handles page links like `/board`.
+- **Vercel**: import the repo; `vercel.json` handles page links. Build command `npm run build`, output `dist`.
+
+Leave the `VITE_SUPABASE_*` variables unset on the host to keep it in demo mode.
+
 ## Backend
 
 Beacon uses a standard [Supabase](https://supabase.com) project (Postgres + Auth) that **you** own. Nothing is tied to any app-builder platform.
