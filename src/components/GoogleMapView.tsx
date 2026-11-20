@@ -21,7 +21,7 @@ interface GoogleMapViewProps {
 const TILE_URLS = {
   bright: 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
   dark: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
-  live: 'https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}{r}.png',
+  live: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
 };
 
 const MapControls = () => {
@@ -43,7 +43,7 @@ const MapControls = () => {
 
 const DynamicTileLayer = () => {
   const { theme } = useTheme();
-  return <TileLayer key={theme} url={TILE_URLS[theme]} attribution='&copy; OpenStreetMap' />;
+  return <TileLayer key={theme} url={TILE_URLS[theme]} attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>' />;
 };
 
 // Auto-fit map to selected route
@@ -149,7 +149,7 @@ const GoogleMapView = ({ selectedRoute, vehicles, now, stageIndex, followedId, o
         zoom={14}
         className="w-full h-full"
         zoomControl={false}
-        attributionControl={false}
+        attributionControl={true}
         style={{ background: isDark ? 'hsl(220, 15%, 6%)' : 'hsl(210, 20%, 96%)' }}
       >
         <DynamicTileLayer />

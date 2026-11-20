@@ -14,14 +14,40 @@ export function googleLoader(): Loader | null {
 let started = false;
 
 /**
- * Snap every route to real roads: Google driving directions from the first
- * stage to the last, passing through each stage in order. Needs the
- * Directions API enabled on the key. Failures leave the drawn path in place.
+ * Open-source routing (OSRM on OpenStreetMap roads). Defaults to the public
+ * OSRM demo server, which is fine for a demo; point VITE_OSRM_URL at your own
+ * OSRM server for production.
+ */
+const OSRM_URL = ((import.meta.env.VITE_OSRM_URL as string | undefined) || 'https://router.project-osrm.org').replace(/\/$/, '');
+
+async function snapWithOsrm(): Promise<void> {
+  for (const route of nairobiRoutes) {
+    if (hasFreshRoadPath(route.number)) continue;
+    const coords = route.stops.map(s => `${s.lng},${s.lat}`).join(';');
+    try {
+      const res = await fetch(`${OSRM_URL}/route/v1/driving/${coords}?overview=full&geometries=geojson&continue_straight=true`);
+      if (!res.ok) throw new Error(`OSRM ${res.status}`);
+      const data = await res.json() as { routes?: { geometry: { coordinates: [number, number][] } }[] };
+      const line = data.routes?.[0]?.geometry.coordinates ?? [];
+      setRoadPath(route.number, line.map(([lng, lat]) => ({ lat, lng })));
+    } catch (e) {
+      console.warn(`[beacon] Could not snap route ${route.number} to roads`, e);
+    }
+    // Be gentle with the shared demo server.
+    await new Promise(r => setTimeout(r, 300));
+  }
+}
+
+/**
+ * Snap every route to real roads through its stages, in order: Google
+ * directions when a Google Maps key is set, otherwise open-source OSRM on
+ * OpenStreetMap. Failures leave the drawn path in place.
  */
 export async function snapRoutesToRoads(): Promise<void> {
-  const l = googleLoader();
-  if (!l || started) return;
+  if (started) return;
   started = true;
+  const l = googleLoader();
+  if (!l) return snapWithOsrm();
   const { DirectionsService } = await l.importLibrary('routes');
   const svc = new DirectionsService();
   for (const route of nairobiRoutes) {

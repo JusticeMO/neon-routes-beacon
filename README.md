@@ -30,7 +30,7 @@ With no backend configured, Beacon runs as a self-contained demo on simulated da
 
 What is simulated: vehicle positions, traffic speed by time of day (evening rush is slowest), fares (peak/off-peak), Jipay payments and receipts (stored in the browser only), ads. ETAs are estimates from distance and traffic speed.
 
-Map: set `VITE_GOOGLE_MAPS_API_KEY` to use Google Maps with the live traffic layer. With the key, each route is also snapped to real roads (Google driving directions through its stages), so route lines and matatus follow the streets. Enable **Maps JavaScript API** and **Directions API** on the key and restrict it to your site's domain. Without a key the app uses an OpenStreetMap street map and the hand-drawn route lines.
+Map: set `VITE_GOOGLE_MAPS_API_KEY` to use Google Maps with the live traffic layer. With the key, each route is also snapped to real roads (Google driving directions through its stages), so route lines and matatus follow the streets. Enable **Maps JavaScript API** and **Directions API** on the key and restrict it to your site's domain. Without a key the app uses an open-source OpenStreetMap street map (CARTO tiles) and snaps routes to roads with open-source OSRM routing (the public demo server by default; set `VITE_OSRM_URL` to your own OSRM server for production).
 
 ### Put the demo online
 
