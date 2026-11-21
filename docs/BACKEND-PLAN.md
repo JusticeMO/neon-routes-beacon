@@ -7,7 +7,8 @@ Scope: everything behind the commuter app, crew app, stage board and SACCO dashb
 
 ## 1. The short version
 
-- **Keep Supabase as the system of record.** Postgres with PostGIS, Auth, Row Level Security, Edge Functions, Realtime Broadcast and pg_cron cover the pilot and well past it. Moving off it now would cost months and buy nothing yet.
+- **Hosting:** the plan is written for Supabase, and section 14 maps every piece to a self-hosted stack on our own server (PostgreSQL + PostGIS, Node/Fastify, Redis, Centrifugo, Caddy, Cloudflare).
+- **Keep Supabase as the system of record (if hosted).** Postgres with PostGIS, Auth, Row Level Security, Edge Functions, Realtime Broadcast and pg_cron cover the pilot and well past it. Moving off it now would cost months and buy nothing yet.
 - **Add only three things around it, and only when each is needed:**
   1. A **CDN-cached snapshot API** for live vehicles (from day one). It makes commuter load nearly free.
   2. A **tracker gateway** (Traccar, open source) on one small always-on server, when the first hardware trackers arrive (phase 4).
@@ -400,3 +401,37 @@ Jipay goes live inside phase 3 or 4, whenever its API and contract exist. Nothin
 | Points rate, daily cap, prize rules (demo values unconfirmed) | Oliver | Phase 4 |
 | Settlement of points and prize fares: daily batch (recommended) or per fare | Oliver + accountant | Phase 4 |
 | Data protection review and ODPC registration | Oliver + lawyer | Before crew onboarding |
+
+---
+
+## 14. Running it on our own server
+
+If Beacon runs on its own server instead of hosted Supabase, the design above stays the same. Only the boxes change. Everything is open source, runs in Docker Compose, and keeps one language (TypeScript) from the database API to the apps.
+
+| Job | Pick | Why |
+| --- | --- | --- |
+| Database | **PostgreSQL 16 + PostGIS**, with pg_partman and pg_cron | Route snapping, geofences and the ledger all live here. Same SQL as the Supabase plan, including RLS policies. |
+| API and ingest | **Node.js + TypeScript, Fastify**, Drizzle or Kysely for SQL, Zod for validation | Same language and types as the React front end. Fastify is fast and simple to host. |
+| Live positions and fan-out | **Redis** (latest vehicle state, rate limits, job queue) + **Centrifugo** (WebSocket fan-out to commuters) | Centrifugo handles tens of thousands of open connections on one server, and the API just publishes to `route:{id}` and `stage:{id}` channels. |
+| Background jobs | **BullMQ** on Redis | Payment callbacks, reconciliation, ETA model, map pack builds, retries. |
+| Auth | Phone OTP issued by the API, short-lived **JWTs**, refresh tokens in Postgres; SMS through Africa's Talking | Kenyan users sign in by phone. The JWT claims are set per request in Postgres (`set_config`), so the same RLS policies still apply. |
+| Map and offline pack | **PMTiles** files served as static files, **MapLibre** in the apps, Planetiler + osmium build job | No tile server to run. The same files serve online users and the offline download. |
+| Routing | Self-hosted **OSRM** (Kenya extract) for building routes; **A\*** on the phone for offline navigation | OSRM is only used at build time, so it never limits the live app. |
+| Hardware trackers | **Traccar** | Decodes 200+ tracker protocols and forwards positions to the ingest API. |
+| Web server, TLS | **Caddy** | Automatic HTTPS certificates, simple config. |
+| In front of the server | **Cloudflare** (free tier) | CDN for snapshots and map files, DDoS protection, hides the server's IP, and keeps working when the server is briefly down. |
+| Commuter app | React web app (PWA) now; **React Native (Expo)** with MapLibre Native later | Reuses the existing React code and TypeScript types. |
+| Crew app | **Native Android (Kotlin)**, or React Native with a native location module | Reliable screen-off location needs a native foreground service. |
+| Monitoring | **Prometheus + Grafana + Loki**, Uptime Kuma, Sentry (cloud free tier) or GlitchTip | Metrics, logs, uptime alerts and errors, all self-hostable. |
+| Backups | **pgBackRest** to off-site object storage, nightly full and continuous WAL | One server is one point of failure; money data must survive losing it. |
+| Deploys | GitHub Actions builds images, Docker Compose on the server | Simple enough for one or two developers. |
+
+**Sizing for the pilot:** one server with 4 vCPU, 8–16 GB RAM and an SSD is plenty for one route and thousands of commuters. Grow by adding RAM and a read replica before splitting services.
+
+**Must-haves before real money flows through it:**
+- Off-site backups, with a restore that has actually been tested.
+- A public HTTPS address that stays up, because M-PESA and Jipay callbacks are lost if the server is down. Plan a second small server or a hosted fallback for the callback endpoints.
+- Security updates, firewall (only 80/443 open, SSH by key), and secrets outside the repo.
+- If the server is in Kenya, that helps with the Data Protection Act; confirm with the lawyer.
+
+**Trade-off to be honest about:** self-hosting saves monthly fees and keeps data in-house, but the team takes over what Supabase did for free: patching, backups, uptime and on-call. A middle path is to self-host Supabase itself (its Docker setup), which keeps the plan unchanged but runs about a dozen containers. For a small team the plain stack above is easier to understand and debug.
