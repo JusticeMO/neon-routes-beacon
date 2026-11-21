@@ -12,10 +12,12 @@ Scope: everything behind the commuter app, crew app, stage board and SACCO dashb
   1. A **CDN-cached snapshot API** for live vehicles (from day one). It makes commuter load nearly free.
   2. A **tracker gateway** (Traccar, open source) on one small always-on server, when the first hardware trackers arrive (phase 4).
   3. **Sentry** for errors plus an uptime checker (from day one).
+  4. A **map pack build job** (Planetiler and osmium, run monthly in CI) that bakes the offline Nairobi map, road graph and places index (section 6A).
 - **One ingest pipeline for every location source.** Crew phones, hardware trackers and vendor feeds all become the same `PositionReport`. Everything downstream (snapping to the route, direction, stage boards, freshness) works the same whatever the source.
 - **Sparse pings by design.** Phones report about once a minute, in batches, using low-power location and nothing at all while parked (section 4.2). The server is built to expect gaps, not fight them.
 - **Commuters get server-pushed updates per route and per stage.** They never read the positions table directly.
 - **Money is a double-entry, idempotent ledger** that mirrors what M-PESA and Jipay confirm. Beacon never holds commuter money itself: Jipay holds wallet funds and the SACCO's PayBill receives fares.
+- **The map works offline.** A prebaked Nairobi map pack (vector tiles, road graph, places index) lets the app show the map, identify any spot, find a route and animate a vehicle with no network (section 6A). This is the MVP technical test.
 - **The terminus queue is a first-class backend feature, not a front-end trick.** The server keeps a live board for every terminus: what is on its way, how far away, and what is already waiting.
 
 ---
@@ -197,6 +199,45 @@ route_variant_stages
 
 ---
 
+## 6A. Offline Nairobi map pack (MVP)
+
+**The MVP technical test:** with the phone in airplane mode, a user can (1) open the Nairobi map, (2) tap any spot and be told what it is and what is around it, (3) get a route between two points, and (4) watch a vehicle animate along a route.
+
+The approach is a **prebaked map pack**: one versioned download, built on the server from OpenStreetMap, that holds everything the phone needs to answer those four questions without a network. The backend's job here is the build pipeline, not a runtime service.
+
+### What's in the pack
+
+| File | Contents | Built with | Rough size (to measure) |
+| --- | --- | --- | --- |
+| `nairobi.pmtiles` | Vector street map of the Nairobi metro area, zoom 0–15, plus local fonts and icons | Planetiler (OSM → vector tiles), PMTiles format | 30–60 MB |
+| `roads.graph.bin` | Road network as a compact graph: nodes, edges, length, road class, one-way flags, speed per class | osmium + a small script | 5–15 MB |
+| `places.bin` | Neighbourhoods and estates as polygons (Kilimani, Eastleigh, Githurai…), roads, landmarks and POIs, Beacon stages with Swahili and local aliases, plus spatial indexes | osmium + script, Flatbush index | 3–8 MB |
+| `routes.json` | SACCO route variants, stages and geometry from section 6 | Exported from the database | under 1 MB |
+| `manifest.json` | Version, OSM snapshot date, file hashes, ODbL attribution | Build script | tiny |
+
+Sizes are estimates until the first build; the goal is under 80 MB total, downloaded once over Wi-Fi.
+
+### How each part of the test works on the phone
+
+1. **Load the map offline.** MapLibre GL renders `nairobi.pmtiles` straight from local storage (Cache Storage or OPFS in the PWA, app storage in native). No tile server is involved.
+2. **Tap a spot, identify it and its surroundings (offline reverse geocoding).**
+   - Point-in-polygon against neighbourhood polygons gives "Kilimani, Dagoretti North".
+   - The nearest road, snapped, gives "on Argwings Kodhek Rd".
+   - A radius search (about 500 m) on the POI and stage index gives nearby landmarks and matatu stages, with distance and direction ("Yaya Centre, 250 m north").
+   - Neighbouring estates come from polygon adjacency, precomputed at build time.
+   - The same index powers offline search by name, so typing "Prestige" or "Kenyatta Hosi" works with no network.
+3. **Navigate offline (base routing algorithm).** A* over `roads.graph.bin` in a Web Worker, with a binary heap and straight-line distance as the heuristic. A Nairobi road graph is on the order of a few hundred thousand nodes, so a cross-city route should take tens of milliseconds on a budget phone (to verify). Walking and driving profiles use the same graph with different edge rules. If that's ever too slow, the same graph can be precomputed into contraction hierarchies at build time with no change to the app.
+4. **Animate an object along a route offline.** Interpolate along the route polyline by distance: precompute cumulative lengths once, then each frame finds the segment and position for `distance = speed × elapsed`, and the marker's bearing comes from the segment. It works the same for a computed route, a SACCO route or a live vehicle between reports (section 4.2).
+
+### After the MVP
+
+- **Matatu journey planning offline:** walk to the nearest stage, ride a SACCO route, transfer, walk. It's a small transit search (RAPTOR) over `routes.json` plus the walking graph, and fits the same pack.
+- **Updates:** the app checks `manifest.json` when online and downloads only changed files, by hash. The map rebuilds monthly from the Geofabrik Kenya extract. Routes ship whenever a SACCO approves a change.
+- **Offline with live data:** when the network drops, the app keeps the map, search and routing, and shows the last known vehicle positions clearly marked with their age.
+- **Licensing:** OpenStreetMap data is ODbL, so the app shows "© OpenStreetMap contributors", and the pack's derived data stays under ODbL.
+
+---
+
 ## 7. Payments: an idempotent ledger with per-vehicle attribution
 
 ### 7.1 Money flows
@@ -335,7 +376,7 @@ Durations are rough estimates for one or two developers.
 | Phase | What | Done when |
 | --- | --- | --- |
 | **0. Foundations** (1 week) | Three environments, CI with migrations and pgTAP, RLS fixes, JWT claims hook, phone OTP sign-in, Sentry. | A SACCO manager can sign in and sees only their SACCO. RLS tests pass in CI. |
-| **1. Routes and stages in the database** (1–2 weeks) | Stages, route variants, PostGIS, the OSRM build script writing to the database, public route API. The app reads routes from the backend. | The pilot route renders from the database with correct stages in both directions. |
+| **1. Offline map MVP, routes and stages** (2–3 weeks) | The map pack build pipeline (section 6A): PMTiles, road graph, places index. MapLibre offline map, tap-to-identify, A* routing and route animation in the app. Stages, route variants, PostGIS and the public route API in the backend. | In airplane mode: the map loads, tapping a spot names it and its surroundings, a route is found between two points, and a vehicle animates along it. The pilot route renders from the database. |
 | **2. Live tracking pilot** (3–4 weeks) | Native Android crew app with the ping policy, `ingest-positions`, `apply_position`, `vehicle_live`, trips, Broadcast channels, cached snapshots, server-side terminus board, ops health screen. | Drive test: direction right on both legs, median report age under 90 s, crew battery use within the agreed limit on three budget phones, the terminus board matches what is physically in the queue. |
 | **3. Payments** (3 weeks) | Ledger, Daraja C2B on the pilot SACCO's PayBill (sandbox, then live), Jipay mock adapter, receipts, unmatched queue, daily reconciliation. | 100 test payments reconcile to the shilling, with duplicates and retries injected. |
 | **4. Rewards and trackers** (3 weeks) | Ad campaigns, verified impressions, points, Beacon Tap rounds, daily SACCO settlement. Traccar gateway and the first tracker or vendor feed. | Points earned, redeemed and settled end to end. One vehicle reports from a tracker with no phone. |
@@ -354,6 +395,7 @@ Jipay goes live inside phase 3 or 4, whenever its API and contract exist. Nothin
 | Crew phones: SACCO-provided or crew's own; who pays the data | Oliver + SACCO | Phase 2 |
 | Do pilot vehicles already have trackers or speed governors with a data feed? | Oliver + SACCO | Phase 4 |
 | SMS provider for OTP | Oliver | Phase 0 |
+| Map pack area: Nairobi metro only, or include Kiambu, Machakos and Kajiado commuter belts | Oliver | Phase 1 |
 | Jipay API, sandbox, settlement and licence details | Jipay | Phase 3/4 |
 | Points rate, daily cap, prize rules (demo values unconfirmed) | Oliver | Phase 4 |
 | Settlement of points and prize fares: daily batch (recommended) or per fare | Oliver + accountant | Phase 4 |
