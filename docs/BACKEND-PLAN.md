@@ -9,7 +9,7 @@ Scope: everything behind the commuter app, crew app, stage board and SACCO dashb
 
 - **Hosting:** the plan is written for Supabase, and section 14 maps every piece to a self-hosted stack on our own server (PostgreSQL + PostGIS, Node/Fastify, Redis, Centrifugo, Caddy, Cloudflare).
 - **Keep Supabase as the system of record (if hosted).** Postgres with PostGIS, Auth, Row Level Security, Edge Functions, Realtime Broadcast and pg_cron cover the pilot and well past it. Moving off it now would cost months and buy nothing yet.
-- **Add only three things around it, and only when each is needed:**
+- **Add only four things around it, and only when each is needed:**
   1. A **CDN-cached snapshot API** for live vehicles (from day one). It makes commuter load nearly free.
   2. A **tracker gateway** (Traccar, open source) on one small always-on server, when the first hardware trackers arrive (phase 4).
   3. **Sentry** for errors plus an uptime checker (from day one).
