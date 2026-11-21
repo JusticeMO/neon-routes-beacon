@@ -28,6 +28,8 @@ Data in the old Lovable Cloud database is not migrated. The schema is in `supaba
 
 ## Target architecture
 
+The full backend plan (ingest, real-time, routes, payments ledger, rewards, security, scaling, phases) is in [BACKEND-PLAN.md](BACKEND-PLAN.md).
+
 ```
 Crew phone (PWA first, native Android later) --positions--> Ingest (Supabase Edge Function / API)
                                                                  |
