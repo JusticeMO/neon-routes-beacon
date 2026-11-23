@@ -1,10 +1,10 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import L from 'leaflet';
 import { MapContainer, Marker, Polyline, CircleMarker, Tooltip, useMap, useMapEvents } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import {
-  ArrowLeft, Bus, Car, Footprints, Home, Loader2, MapPin, Navigation, Play, Search, Square, Wifi, WifiOff, X,
+  ArrowLeft, Bus, Car, Crosshair, Share2, Footprints, Home, Loader2, MapPin, Navigation, Play, Search, Square, Wifi, WifiOff, X,
 } from 'lucide-react';
 import { nairobiRoutes } from '@/data/routes';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -14,7 +14,7 @@ import { stageId } from '@/lib/tracking/deepLink';
 import { loadManifest, loadPlaces, packSizeMB, type PackManifest } from '@/lib/offline/pack';
 import { describe, formatDistance, identify, searchPlaces, type Identified, type Places, type SearchHit } from '@/lib/offline/places';
 import { loadRouter, nearestRoad, route as findRoute, searchRoadNames, type TimedRoute } from '@/lib/offline/router';
-import { tripToTown, type Journey } from '@/lib/offline/journey';
+import { journeyText, planJourney, type Journey, type Origin } from '@/lib/offline/journey';
 import { animator } from '@/lib/offline/animate';
 import type { LatLng, Profile } from '@/lib/offline/roadGraph';
 
@@ -84,7 +84,7 @@ const FlyTo = ({ target }: { target: { point: LatLng; zoom?: number; key: number
 const FitPath = ({ path }: { path: LatLng[] | null }) => {
   const map = useMap();
   useEffect(() => {
-    if (path && path.length > 1) map.fitBounds(L.latLngBounds(path.map(p => [p.lat, p.lng])), { paddingTopLeft: [30, 120], paddingBottomRight: [30, 300], maxZoom: 17 });
+    if (path && path.length > 1) map.fitBounds(L.latLngBounds(path.map(p => [p.lat, p.lng])), { paddingTopLeft: [30, 120], paddingBottomRight: [30, Math.round(window.innerHeight * 0.55)], maxZoom: 17 });
   }, [path, map]);
   return null;
 };
@@ -93,7 +93,7 @@ type Mode =
   | { kind: 'idle' }
   | { kind: 'spot'; id: Identified }
   | { kind: 'directions'; from: LatLng | null; to: LatLng | null; fromLabel: string; toLabel: string; profile: Profile; result: TimedRoute | null; busy: boolean; error?: string }
-  | { kind: 'trip'; from: LatLng; label: string; journey: Journey | null; busy: boolean };
+  | { kind: 'trip'; title: string; origin: Origin; dest: LatLng | 'town'; destLabel: string; journey: Journey | null; busy: boolean; error?: string };
 
 /**
  * The offline map: works in airplane mode once opened online. Tap any spot to learn what it
@@ -148,7 +148,8 @@ const OfflineMap = () => {
     setHome({ point, label });
     setFly({ point, zoom: 16, key: Date.now() });
     if (params.get('view') === 'spot') tapSpot(point);
-    else startTrip(point, label);
+    else if (params.get('dir') === 'to') startTrip({ kind: 'town' }, point, label, `Getting to ${label}`);
+    else startTrip({ kind: 'point', point }, 'town', 'town', `Trip to town from ${label}`);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [places, routerReady, params]);
 
@@ -179,12 +180,35 @@ const OfflineMap = () => {
     }
   }, []);
 
-  const startTrip = useCallback(async (from: LatLng, label: string) => {
+  const startTrip = useCallback(async (origin: Origin, dest: LatLng | 'town', destLabel: string, title: string) => {
     setPlaying(null);
-    setMode({ kind: 'trip', from, label, journey: null, busy: true });
-    const journey = await tripToTown(from, nairobiRoutes).catch(() => null);
-    setMode({ kind: 'trip', from, label, journey, busy: false });
+    const base = { kind: 'trip' as const, title, origin, dest, destLabel };
+    setMode({ ...base, journey: null, busy: true });
+    const journey = await planJourney(origin, dest, nairobiRoutes).catch(() => null);
+    setMode({ ...base, journey, busy: false });
   }, []);
+
+  // Start "getting there" from where the phone is instead of from town.
+  const fromMyLocation = useCallback((m: Extract<Mode, { kind: 'trip' }>) => {
+    if (!navigator.geolocation) return;
+    setMode({ ...m, busy: true, error: undefined });
+    navigator.geolocation.getCurrentPosition(
+      pos => startTrip({ kind: 'point', point: { lat: pos.coords.latitude, lng: pos.coords.longitude } }, m.dest, m.destLabel, m.title),
+      () => setMode({ ...m, busy: false, error: 'Location is off. Showing the trip from town.' }),
+      { enableHighAccuracy: false, timeout: 10_000, maximumAge: 120_000 },
+    );
+  }, [startTrip]);
+
+  const shareTrip = useCallback(async (m: Extract<Mode, { kind: 'trip' }>) => {
+    if (!m.journey || m.dest === 'town') return;
+    const link = `${location.origin}/map?lat=${m.dest.lat.toFixed(5)}&lng=${m.dest.lng.toFixed(5)}&label=${encodeURIComponent(m.destLabel)}&dir=to`;
+    const text = journeyText(m.journey, m.destLabel, link);
+    try {
+      if (navigator.share) await navigator.share({ title: m.title, text });
+      else { await navigator.clipboard.writeText(text); setShared(true); setTimeout(() => setShared(false), 2500); }
+    } catch { /* share sheet closed */ }
+  }, []);
+  const [shared, setShared] = useState(false);
 
   const labelFor = (id: Identified) => describe(id);
 
@@ -202,7 +226,7 @@ const OfflineMap = () => {
 
   const routePath = mode.kind === 'directions' ? mode.result?.path ?? null : null;
   const trip = mode.kind === 'trip' ? mode.journey : null;
-  const fitTarget = useMemo(() => routePath ?? (trip ? [...trip.walk.path, ...trip.ride.path] : null), [routePath, trip]);
+  const fitTarget = useMemo(() => routePath ?? (trip ? [...(trip.walkIn?.path ?? []), ...trip.ride.path, ...(trip.change?.ride.path ?? []), ...(trip.walkOut?.path ?? [])] : null), [routePath, trip]);
   const stopPlaying = useCallback(() => setPlaying(null), []);
 
   return (
@@ -225,13 +249,19 @@ const OfflineMap = () => {
         </>}
 
         {trip && <>
-          <Polyline positions={trip.walk.path.map(p => [p.lat, p.lng] as [number, number])} pathOptions={{ color: isDark ? '#e5e7eb' : '#374151', weight: 4, dashArray: '2 8', lineCap: 'round' }} interactive={false} />
-          <Polyline positions={trip.ride.path.map(p => [p.lat, p.lng] as [number, number])} pathOptions={{ color: trip.ride.route.color, weight: 10, opacity: 0.3 }} interactive={false} />
-          <Polyline positions={trip.ride.path.map(p => [p.lat, p.lng] as [number, number])} pathOptions={{ color: trip.ride.route.color, weight: 4.5, opacity: 0.95 }} interactive={false} />
-          {[trip.stage.point, trip.ride.path[trip.ride.path.length - 1]].map((p, i) => (
-            <CircleMarker key={i} center={[p.lat, p.lng]} radius={7} pathOptions={{ color: trip.ride.route.color, weight: 3, fillColor: '#fff', fillOpacity: 1 }}>
-              <Tooltip permanent direction="top" offset={[0, -8]} className="neon-tooltip">{i === 0 ? trip.stage.name : trip.ride.to}</Tooltip>
-            </CircleMarker>
+          {[trip.walkIn, trip.change?.walk, trip.walkOut].map((w, i) => w && (
+            <Polyline key={`walk-${i}`} positions={w.path.map(p => [p.lat, p.lng] as [number, number])} pathOptions={{ color: isDark ? '#e5e7eb' : '#374151', weight: 4, dashArray: '2 8', lineCap: 'round' }} interactive={false} />
+          ))}
+          {[trip.ride, trip.change?.ride].map((r, k) => r && (
+            <Fragment key={`ride-${k}`}>
+              <Polyline positions={r.path.map(p => [p.lat, p.lng] as [number, number])} pathOptions={{ color: r.route.color, weight: 10, opacity: 0.3 }} interactive={false} />
+              <Polyline positions={r.path.map(p => [p.lat, p.lng] as [number, number])} pathOptions={{ color: r.route.color, weight: 4.5, opacity: 0.95 }} interactive={false} />
+              {[r.path[0], r.path[r.path.length - 1]].map((p, i) => (
+                <CircleMarker key={i} center={[p.lat, p.lng]} radius={7} pathOptions={{ color: r.route.color, weight: 3, fillColor: '#fff', fillOpacity: 1 }}>
+                  <Tooltip permanent={!(k === 0 && i === 1 && trip.change)} direction="top" offset={[0, -8]} className="neon-tooltip">{i === 0 ? r.from : r.to}</Tooltip>
+                </CircleMarker>
+              ))}
+            </Fragment>
           ))}
         </>}
 
@@ -355,7 +385,7 @@ const OfflineMap = () => {
                   <Button size="sm" variant="outline" onClick={() => runDirections({ kind: 'directions', from: home?.point ?? null, to: id.point, fromLabel: home?.label ?? '', toLabel: labelFor(id), profile: 'drive', result: null, busy: false })}>
                     <MapPin className="w-3.5 h-3.5 mr-1" /> To here
                   </Button>
-                  <Button size="sm" onClick={() => startTrip(id.point, labelFor(id))}>
+                  <Button size="sm" onClick={() => startTrip({ kind: 'point', point: id.point }, 'town', 'town', `Trip to town from ${labelFor(id)}`)}>
                     <Bus className="w-3.5 h-3.5 mr-1" /> To town
                   </Button>
                 </div>
@@ -372,36 +402,59 @@ const OfflineMap = () => {
           {mode.kind === 'trip' && (
             <div className="space-y-3">
               <div className="flex items-start gap-2">
-                {home && home.point === mode.from ? <Home className="w-5 h-5 text-violet-500 mt-0.5" /> : <MapPin className="w-5 h-5 text-destructive mt-0.5" />}
+                {home ? <Home className="w-5 h-5 text-violet-500 mt-0.5" /> : <MapPin className="w-5 h-5 text-destructive mt-0.5" />}
                 <div className="flex-1 min-w-0">
-                  <p className="font-semibold leading-tight">Trip to town from {mode.label}</p>
-                  {fromSakafind && <p className="text-xs text-muted-foreground">From Sakafind · walking and matatu, worked out on your phone</p>}
+                  <p className="font-semibold leading-tight">{mode.title}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {mode.origin.kind === 'town' ? 'From town' : mode.dest === 'town' ? 'Walk and matatu' : 'From your location'}
+                    {fromSakafind ? ' · from Sakafind' : ''} · worked out on your phone
+                  </p>
                 </div>
                 <button onClick={() => { setMode({ kind: 'idle' }); setPlaying(null); }} aria-label="Close"><X className="w-4 h-4 text-muted-foreground" /></button>
               </div>
-              {mode.busy && <p className="text-sm text-muted-foreground flex items-center gap-2"><Loader2 className="w-4 h-4 animate-spin" /> Finding the nearest stage…</p>}
-              {!mode.busy && !mode.journey && <p className="text-sm text-muted-foreground">No Beacon stage within 1.5 km yet. Beacon is adding more SACCO routes; you can still tap the map for the nearest roads and landmarks.</p>}
+              {mode.busy && <p className="text-sm text-muted-foreground flex items-center gap-2"><Loader2 className="w-4 h-4 animate-spin" /> Finding the best matatu…</p>}
+              {mode.error && <p className="text-xs text-warning">{mode.error}</p>}
+              {!mode.busy && !mode.journey && <p className="text-sm text-muted-foreground">No Beacon route stops within 1.5 km of both ends yet. Beacon is adding more SACCO routes; you can still tap the map for directions by road.</p>}
               {mode.journey && (() => {
                 const j = mode.journey;
+                const boardIndex = j.ride.fromIndex;
                 return (
                   <>
-                    <div className="flex items-baseline gap-2">
+                    <div className="flex items-baseline gap-2 flex-wrap">
                       <span className="text-2xl font-bold whitespace-nowrap">{minutes(j.totalS)}</span>
-                      <span className="text-sm text-muted-foreground">to {j.ride.to} (estimate, before waiting time)</span>
+                      <span className="text-sm font-semibold whitespace-nowrap">· KSh {j.fareKsh}</span>
+                      <span className="text-xs text-muted-foreground">estimate, plus waiting time{j.ride.peak ? ' · peak fare' : ''}</span>
                     </div>
                     <ol className="space-y-2 text-sm">
-                      <li className="flex gap-2"><Footprints className="w-4 h-4 mt-0.5 shrink-0" /><span>Walk {formatDistance(j.walk.distanceM)} ({minutes(j.walk.durationS)}) to <b>{j.stage.name}</b> stage</span></li>
-                      <li className="flex gap-2"><Bus className="w-4 h-4 mt-0.5 shrink-0" style={{ color: j.ride.route.color }} /><span>Take route <b>{j.ride.route.number}</b> to {j.ride.to}, {formatDistance(j.ride.distanceM)} (about {minutes(j.ride.durationS)})</span></li>
+                      {j.walkIn && <li className="flex gap-2"><Footprints className="w-4 h-4 mt-0.5 shrink-0" /><span>Walk {formatDistance(j.walkIn.distanceM)} ({minutes(j.walkIn.durationS)}) to <b>{j.ride.from}</b> stage</span></li>}
+                      {[j.ride, j.change?.ride].map((r, k) => r && (
+                        <Fragment key={k}>
+                          {k === 1 && j.change?.walk && <li className="flex gap-2"><Footprints className="w-4 h-4 mt-0.5 shrink-0" /><span>Change in town: walk {formatDistance(j.change.walk.distanceM)} ({minutes(j.change.walk.durationS)}) to <b>{r.from}</b></span></li>}
+                          <li className="flex gap-2"><Bus className="w-4 h-4 mt-0.5 shrink-0" style={{ color: r.route.color }} />
+                            <span>Board route <b>{r.route.number}</b> at <b>{r.from}</b>, alight at <b>{r.to}</b>: {formatDistance(r.distanceM)}, about {minutes(r.durationS)}. Fare about KSh {r.fareKsh}.</span></li>
+                        </Fragment>
+                      ))}
+                      {j.walkOut && <li className="flex gap-2"><Footprints className="w-4 h-4 mt-0.5 shrink-0" /><span>Walk {formatDistance(j.walkOut.distanceM)} ({minutes(j.walkOut.durationS)}) to <b>{mode.destLabel}</b></span></li>}
                     </ol>
                     <div className="grid grid-cols-2 gap-2">
-                      <Button size="sm" variant="outline" onClick={() => setPlaying(playing ? null : { path: j.ride.path, color: j.ride.route.color, seconds: 12 })}>
+                      <Button size="sm" variant="outline" onClick={() => setPlaying(playing ? null : { path: [...j.ride.path, ...(j.change?.walk?.path ?? []), ...(j.change?.ride.path ?? [])], color: j.ride.route.color, seconds: j.change ? 18 : 12 })}>
                         {playing ? <><Square className="w-3.5 h-3.5 mr-1" /> Stop</> : <><Play className="w-3.5 h-3.5 mr-1" /> Play the ride</>}
                       </Button>
                       <Button size="sm" asChild>
-                        <Link to={`/?stage=${encodeURIComponent(stageId(j.ride.route, j.stage.serves.find(s => s.route.id === j.ride.route.id)!.stageIndex))}`}>
+                        <Link to={`/?stage=${encodeURIComponent(stageId(j.ride.route, boardIndex))}`}>
                           <Bus className="w-3.5 h-3.5 mr-1" /> Live matatus
                         </Link>
                       </Button>
+                      {mode.dest !== 'town' && mode.origin.kind === 'town' && (
+                        <Button size="sm" variant="outline" onClick={() => fromMyLocation(mode)}>
+                          <Crosshair className="w-3.5 h-3.5 mr-1" /> From my location
+                        </Button>
+                      )}
+                      {mode.dest !== 'town' && (
+                        <Button size="sm" variant="outline" onClick={() => shareTrip(mode)}>
+                          <Share2 className="w-3.5 h-3.5 mr-1" /> {shared ? 'Copied' : 'Share directions'}
+                        </Button>
+                      )}
                     </div>
                   </>
                 );
