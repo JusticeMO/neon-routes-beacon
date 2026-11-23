@@ -1,4 +1,7 @@
 import { isBackendConfigured } from '@/integrations/supabase/client';
+import { FARES } from '@/data/fares';
+
+export { FARES };
 
 /**
  * Demo mode runs every screen (commuter, stage board, crew, SACCO) on seeded
@@ -29,19 +32,12 @@ export function paybillAccountFor(plate: string): string {
   return plate.replace(/\s+/g, '').toUpperCase();
 }
 
-/** Fare per route in KSh (demo values; real fares come from the SACCO's route setup). */
-const FARES: Record<string, { offPeak: number; peak: number }> = {
-  '46': { offPeak: 60, peak: 80 },
-  '34': { offPeak: 70, peak: 100 },
-  '15': { offPeak: 80, peak: 100 },
-  '108': { offPeak: 50, peak: 70 },
-};
-
 export function isPeak(now: number): boolean {
   const h = new Date(now).getHours();
   return (h >= 6 && h < 9) || (h >= 17 && h < 20);
 }
 
+/** Fare per route in KSh now (demo values in src/data/fares.ts; real fares come from the SACCO's route setup). */
 export function fareFor(routeNumber: string, now: number): number {
   const f = FARES[routeNumber] ?? { offPeak: 70, peak: 90 };
   return isPeak(now) ? f.peak : f.offPeak;
