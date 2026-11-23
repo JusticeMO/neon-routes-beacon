@@ -57,7 +57,17 @@ Sakafind home pages link their nearest matatu stage to Beacon. Two things on the
 | What | Where | Use |
 | --- | --- | --- |
 | Deep link | `/map?lat=-1.2989&lng=36.7826&label=Sunrise%20Apartments&from=sakafind` | Opens the offline map at the home, with the walk to the nearest stage, the matatu ride to town and a link to live matatus. Add `&view=spot` to open the "what's around here" card instead. |
-| Stage list | `/api/v1/stages.json` | Every Beacon stage with its position and the routes that stop there (number, name, colour, direction). Generated on each build, CORS open, no vehicle or rider data. |
+| Stage list | `/api/v1/stages.json` | Every Beacon stage with its position and the routes that stop there (number, name, colour, direction, usual fare off-peak and peak). Generated on each build, CORS open, no vehicle or rider data. |
+| Directions to a home | `/map?lat=..&lng=..&label=..&from=sakafind&dir=to` | "Getting to Sunrise Apartments" from town or from the commuter's location: walk, matatu (with a change in town when needed), walk, total time and fare, with Share directions. |
+
+### Continue with Sakafind (shared sign-in and JiPay wallet)
+
+Profile has **Continue with Sakafind**. The commuter picks a weekly fare limit on Sakafind's `/connect/beacon` page and confirms with their wallet passcode; Beacon then offers **JiPay wallet (Sakafind)** when paying a fare, which pays the SACCO PayBill straight from the wallet they pay rent from.
+
+- OAuth 2.0 code flow with PKCE (S256). The callback is `/connect/sakafind`; the verifier never leaves the browser.
+- Each fare carries an `Idempotency-Key`, so a retry never pays twice. A fare JiPay has not confirmed is shown as pending, never as paid.
+- Sakafind caps every fare (KSh 300) and the week (the limit the tenant chose), and the tenant can disconnect from Sakafind settings.
+- Set `VITE_SAKAFIND_URL` and `VITE_SAKAFIND_API` (see `.env.example`). Without them the button links a demo wallet held in the browser and no money moves.
 
 ### Put the demo online
 

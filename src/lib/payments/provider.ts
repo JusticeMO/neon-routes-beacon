@@ -13,14 +13,17 @@ export interface FareRequest {
   phone: string;
   /** Account number the commuter entered (Jipay PayBill). Defaults to the vehicle plate. */
   accountRef?: string;
+  /** Same value on every retry of one fare, so a provider can refuse to charge twice. */
+  idempotencyKey?: string;
 }
 
 /**
  * 'prize': a Beacon Tap win; the round's sponsor pays the fare.
  * 'points': Beacon points earned by watching ads; advertisers fund the fare.
  * Both pay the SACCO's PayBill in full, so the crew is paid as for any fare.
+ * 'sakafind': the tenant's JiPay wallet on Sakafind, within the weekly limit they set there.
  */
-export type PaymentMethod = 'jipay' | 'mpesa-paybill' | 'prize' | 'points';
+export type PaymentMethod = 'jipay' | 'mpesa-paybill' | 'prize' | 'points' | 'sakafind';
 
 export interface Receipt {
   transactionId: string;
@@ -37,7 +40,8 @@ export interface Receipt {
   amountKsh: number;
   phoneMasked: string;
   paidAt: string;
-  status: 'confirmed' | 'failed';
+  /** 'pending': sent, but JiPay has not confirmed yet. Never shown as paid. */
+  status: 'confirmed' | 'pending' | 'failed';
   /** True for the mocked provider: no money moved. */
   demo: boolean;
 }

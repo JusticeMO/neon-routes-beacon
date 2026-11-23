@@ -9,7 +9,8 @@ import { nairobiRoutes, type Route } from '@/data/routes';
 import { sampleVehicles } from '@/data/sampleVehicles';
 import DemoViewsMenu, { DEMO_VIEWS } from '@/components/DemoViewsMenu';
 import { readReceipts } from '@/lib/payments/jipayMock';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
+import SakafindCard from '@/components/sakafind/SakafindCard';
 import { useAllVehicles, useNow, useRouteVehicles } from '@/hooks/useRouteVehicles';
 import { parseDeepLink, stageId } from '@/lib/tracking/deepLink';
 import { coverage } from '@/lib/tracking/vehicleStatus';
@@ -18,7 +19,9 @@ import { Users, MapPin, ChevronRight, Banknote } from 'lucide-react';
 
 const Index = () => {
   const [showSplash, setShowSplash] = useState(true);
-  const [activeTab, setActiveTab] = useState('home');
+  const location = useLocation();
+  // Coming back from "Continue with Sakafind" opens the profile, where the wallet now shows.
+  const [activeTab, setActiveTab] = useState(() => (location.state as { tab?: string } | null)?.tab ?? 'home');
   // Deep links: ?route=<number> or ?stage=<stage id>. Bad ids fall back to the selector.
   const initial = useMemo(() => parseDeepLink(window.location.search, nairobiRoutes), []);
   const [selectedRoute, setSelectedRoute] = useState<Route | null>(initial.route);
@@ -208,6 +211,8 @@ const Index = () => {
                 <p className="text-xs text-muted-foreground">M-PESA and Jipay (demo)</p>
               </div>
             </div>
+
+            <SakafindCard />
 
             <div className="grid grid-cols-2 gap-3 mb-5">
               <div className="bg-card rounded-2xl p-3 text-center border border-border/30">
