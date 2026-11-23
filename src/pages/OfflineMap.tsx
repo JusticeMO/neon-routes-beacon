@@ -11,7 +11,8 @@ import { useTheme } from '@/contexts/ThemeContext';
 import OfflineBaseLayer from '@/components/OfflineBaseLayer';
 import { Button } from '@/components/ui/button';
 import { stageId } from '@/lib/tracking/deepLink';
-import { loadManifest, loadPlaces, packSizeMB, type PackManifest } from '@/lib/offline/pack';
+import { loadManifest, loadPlaces, markPackGood, packSizeMB, type PackManifest } from '@/lib/offline/pack';
+import { inBox, parseMapLink } from '@/lib/offline/mapLink';
 import { describe, formatDistance, identify, searchPlaces, type Identified, type Places, type SearchHit } from '@/lib/offline/places';
 import { loadRouter, nearestRoad, route as findRoute, searchRoadNames, type TimedRoute } from '@/lib/offline/router';
 import { journeyText, planJourney, type Journey, type Origin } from '@/lib/offline/journey';
@@ -136,22 +137,29 @@ const OfflineMap = () => {
     setMode({ kind: 'spot', id: identify(places, p, nairobiRoutes, road) });
   }, [places, routerReady]);
 
-  // Deep link: /map?lat=-1.29&lng=36.78&label=Sunrise%20Apartments[&from=sakafind]
+  // Deep link: /map?lat=-1.29&lng=36.78&label=Sunrise%20Apartments[&from=sakafind][&dir=to|&view=spot]
   const linked = useRef(false);
+  const [linkNotice, setLinkNotice] = useState<string | null>(null);
   useEffect(() => {
-    if (linked.current || !places || !routerReady) return;
-    const lat = Number(params.get('lat')), lng = Number(params.get('lng'));
-    if (!params.get('lat') || !Number.isFinite(lat) || !Number.isFinite(lng)) return;
+    if (linked.current || !places || !routerReady || !manifest) return;
+    const link = parseMapLink(params, manifest.bbox);
+    if (link.kind === 'none') return;
     linked.current = true;
-    const point = { lat, lng };
-    const label = params.get('label')?.slice(0, 80) || 'Selected place';
+    if (link.kind === 'invalid') { setLinkNotice(link.message); return; }
+    if (link.kind === 'outside') { setLinkNotice(link.message); return; }
+    const { point, label } = link;
     setHome({ point, label });
     setFly({ point, zoom: 16, key: Date.now() });
-    if (params.get('view') === 'spot') tapSpot(point);
-    else if (params.get('dir') === 'to') startTrip({ kind: 'town' }, point, label, `Getting to ${label}`);
+    if (link.view === 'spot') tapSpot(point);
+    else if (link.view === 'to') startTrip({ kind: 'town' }, point, label, `Getting to ${label}`);
     else startTrip({ kind: 'point', point }, 'town', 'town', `Trip to town from ${label}`);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [places, routerReady, params]);
+  }, [places, routerReady, manifest, params]);
+
+  // Remember the pack once everything in it has loaded, so a later broken download can fall back to it.
+  useEffect(() => {
+    if (manifest && places && routerReady) markPackGood(manifest.version);
+  }, [manifest, places, routerReady]);
 
   // Search: places and stages from the pack, roads from the routing worker.
   useEffect(() => {
@@ -184,8 +192,14 @@ const OfflineMap = () => {
     setPlaying(null);
     const base = { kind: 'trip' as const, title, origin, dest, destLabel };
     setMode({ ...base, journey: null, busy: true });
-    const journey = await planJourney(origin, dest, nairobiRoutes).catch(() => null);
-    setMode({ ...base, journey, busy: false });
+    let journey: Journey | null = null;
+    let error: string | undefined;
+    try {
+      journey = await planJourney(origin, dest, nairobiRoutes);
+    } catch {
+      error = 'Could not work out the matatu trip on this phone. Close the card and try again.';
+    }
+    setMode({ ...base, journey, busy: false, error });
   }, []);
 
   // Start "getting there" from where the phone is instead of from town.
@@ -193,11 +207,18 @@ const OfflineMap = () => {
     if (!navigator.geolocation) return;
     setMode({ ...m, busy: true, error: undefined });
     navigator.geolocation.getCurrentPosition(
-      pos => startTrip({ kind: 'point', point: { lat: pos.coords.latitude, lng: pos.coords.longitude } }, m.dest, m.destLabel, m.title),
+      pos => {
+        const here = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+        if (manifest && !inBox(here, manifest.bbox)) {
+          setMode({ ...m, busy: false, error: "You are outside Beacon's Nairobi map. Showing the trip from town." });
+          return;
+        }
+        startTrip({ kind: 'point', point: here }, m.dest, m.destLabel, m.title);
+      },
       () => setMode({ ...m, busy: false, error: 'Location is off. Showing the trip from town.' }),
       { enableHighAccuracy: false, timeout: 10_000, maximumAge: 120_000 },
     );
-  }, [startTrip]);
+  }, [startTrip, manifest]);
 
   const shareTrip = useCallback(async (m: Extract<Mode, { kind: 'trip' }>) => {
     if (!m.journey || m.dest === 'town') return;
@@ -308,7 +329,8 @@ const OfflineMap = () => {
         <div className="flex justify-center pointer-events-auto">
           <div className="px-3 py-1.5 rounded-full bg-card/95 backdrop-blur-md border border-border/40 shadow text-[11px] font-medium flex items-center gap-1.5">
             {status === 'loading' && <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Loading the offline Nairobi map…</>}
-            {status === 'error' && <><WifiOff className="w-3.5 h-3.5 text-destructive" /> Map pack unavailable. Open once with internet.</>}
+            {status === 'error' && <><WifiOff className="w-3.5 h-3.5 text-destructive" /> {online ? 'The offline map did not load.' : 'The offline map is not on this phone yet. Open Beacon once with internet.'}
+              <button className="underline ml-1" onClick={() => location.reload()}>Try again</button></>}
             {status === 'ready' && (online
               ? <><Wifi className="w-3.5 h-3.5 text-success" /> Offline map ready · {packSizeMB(manifest!).toFixed(1)} MB · works without internet</>
               : <><WifiOff className="w-3.5 h-3.5 text-warning" /> No internet · map, search and directions still work</>)}
@@ -319,6 +341,13 @@ const OfflineMap = () => {
       {/* Bottom card */}
       <div className="absolute bottom-0 inset-x-0 z-[1000] p-3">
         <div className="mx-auto max-w-lg rounded-3xl bg-card border border-border/40 shadow-2xl p-4 max-h-[55vh] overflow-y-auto">
+          {linkNotice && (
+            <div className="mb-3 rounded-xl border border-warning/40 bg-warning/10 p-3 text-xs flex gap-2" role="alert" data-testid="link-notice">
+              <MapPin className="w-4 h-4 text-warning shrink-0" />
+              <span className="flex-1">{linkNotice}</span>
+              <button onClick={() => setLinkNotice(null)} aria-label="Dismiss"><X className="w-3.5 h-3.5 text-muted-foreground" /></button>
+            </div>
+          )}
           {mode.kind === 'idle' && (
             <div className="text-sm">
               <p className="font-semibold">{fromSakafind ? 'Matatus near your new home' : 'Tap anywhere on the map'}</p>
@@ -414,7 +443,7 @@ const OfflineMap = () => {
               </div>
               {mode.busy && <p className="text-sm text-muted-foreground flex items-center gap-2"><Loader2 className="w-4 h-4 animate-spin" /> Finding the best matatu…</p>}
               {mode.error && <p className="text-xs text-warning">{mode.error}</p>}
-              {!mode.busy && !mode.journey && <p className="text-sm text-muted-foreground">No Beacon route stops within 1.5 km of both ends yet. Beacon is adding more SACCO routes; you can still tap the map for directions by road.</p>}
+              {!mode.busy && !mode.journey && !mode.error && <p className="text-sm text-muted-foreground">No Beacon route stops within 1.5 km of both ends yet. Beacon is adding more SACCO routes; you can still tap the map for directions by road.</p>}
               {mode.journey && (() => {
                 const j = mode.journey;
                 const boardIndex = j.ride.fromIndex;

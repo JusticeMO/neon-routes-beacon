@@ -199,7 +199,7 @@ const Index = () => {
 
       case 'profile': {
         const receipts = readReceipts();
-        const spent = receipts.filter(r => r.method !== 'prize' && r.method !== 'points').reduce((t, r) => t + r.amountKsh, 0);
+        const spent = receipts.filter(r => r.method !== 'prize' && r.method !== 'points' && r.status !== 'failed').reduce((t, r) => t + r.amountKsh, 0);
         return (
           <div className="p-4 pb-24 overflow-y-auto h-full">
             <div className="pt-2 mb-6 flex items-center gap-4">
@@ -237,7 +237,7 @@ const Index = () => {
                     <div className="text-sm font-medium">{r.vehiclePlate} · route {r.routeNumber} · {r.provider}</div>
                     <div className="text-[11px] text-muted-foreground">{r.boardingStage} · {new Date(r.paidAt).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })} · <span className="font-mono">{r.transactionId}</span></div>
                   </div>
-                  <span className="text-sm font-semibold">KSh {r.amountKsh}</span>
+                  <span className="text-sm font-semibold text-right">KSh {r.amountKsh}{r.status !== 'confirmed' && <span className={`block text-[10px] font-normal ${r.status === 'failed' ? 'text-destructive' : 'text-warning'}`}>{r.status === 'failed' ? 'not paid' : 'pending'}</span>}</span>
                 </div>
               ))}
             </div>

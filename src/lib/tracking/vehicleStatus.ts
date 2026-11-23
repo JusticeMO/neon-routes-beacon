@@ -32,8 +32,13 @@ export const FRESH_MAX_MS = 60_000;
 export const AGING_MAX_MS = 3 * 60_000;
 export const STALE_MAX_MS = 10 * 60_000;
 
+/** A report stamped this far in the future comes from a wrong clock and says nothing about now. */
+export const FUTURE_SKEW_MS = 2 * 60_000;
+
 export function freshnessOf(lastReportAt: string, now: number): Freshness {
   const age = now - Date.parse(lastReportAt);
+  // Unreadable or far-future timestamps would otherwise look "fresh" forever.
+  if (!Number.isFinite(age) || age < -FUTURE_SKEW_MS) return 'hidden';
   if (age < FRESH_MAX_MS) return 'fresh';
   if (age < AGING_MAX_MS) return 'aging';
   if (age < STALE_MAX_MS) return 'stale';

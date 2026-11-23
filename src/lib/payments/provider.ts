@@ -42,6 +42,10 @@ export interface Receipt {
   paidAt: string;
   /** 'pending': sent, but JiPay has not confirmed yet. Never shown as paid. */
   status: 'confirmed' | 'pending' | 'failed';
+  /** The payment network's own receipt code, when it differs from transactionId (Sakafind fares). */
+  mpesaReceipt?: string;
+  /** Why a fare that was pending later failed, in words to show. */
+  failureMessage?: string;
   /** True for the mocked provider: no money moved. */
   demo: boolean;
 }

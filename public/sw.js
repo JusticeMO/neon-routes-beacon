@@ -24,22 +24,25 @@ self.addEventListener('activate', event => {
 self.addEventListener('message', event => {
   const data = event.data || {};
   if (data.type !== 'warm' || !Array.isArray(data.urls)) return;
-  event.waitUntil(caches.open(CACHE).then(cache => Promise.all(data.urls.map(async url => {
-    if (await cache.match(url, { ignoreVary: true })) return;
-    try {
-      const res = await fetch(url);
-      if (res.ok) await cache.put(url, res);
-    } catch { /* offline: try again next time */ }
-  }))));
-  // Drop map pack files from older pack versions.
-  if (data.packVersion) {
-    event.waitUntil(caches.open(CACHE).then(async cache => {
-      for (const req of await cache.keys()) {
-        const u = new URL(req.url);
-        if (u.pathname.startsWith('/offline/') && u.searchParams.has('v') && u.searchParams.get('v') !== data.packVersion) await cache.delete(req);
-      }
+  event.waitUntil(caches.open(CACHE).then(async cache => {
+    await Promise.all(data.urls.map(async url => {
+      if (await cache.match(url, { ignoreVary: true })) return;
+      try {
+        const res = await fetch(url);
+        if (res.ok) await cache.put(url, res);
+      } catch { /* offline: try again next time */ }
     }));
-  }
+    // Drop older map packs, but only once every file of the new one is on the phone:
+    // a download cut short must leave the old pack working offline.
+    const pack = data.urls.filter(u => /\/offline\/[^?]+\?v=/.test(u));
+    if (!data.packVersion || !pack.length) return;
+    const have = await Promise.all(pack.map(u => cache.match(u, { ignoreVary: true })));
+    if (have.some(h => !h)) return;
+    for (const req of await cache.keys()) {
+      const u = new URL(req.url);
+      if (u.pathname.startsWith('/offline/') && u.searchParams.has('v') && u.searchParams.get('v') !== data.packVersion) await cache.delete(req);
+    }
+  }));
 });
 
 async function networkFirst(request, key) {

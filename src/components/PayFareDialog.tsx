@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { CheckCircle2, Clock, Coins, Home, Loader2, Smartphone, Trophy, Wallet } from 'lucide-react';
+import { CheckCircle2, Clock, Coins, Home, Loader2, RefreshCw, Smartphone, Trophy, Wallet, XCircle } from 'lucide-react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -11,7 +11,7 @@ import { payWithPoints, payWithPrize } from '@/lib/payments/rewards';
 import { POINTS_PER_AD, pointsBalance, pointsForFare } from '@/lib/demo/adPoints';
 import { activeVoucher } from '@/lib/demo/tapLeaderboard';
 import type { PaymentMethod, PaymentProvider, Receipt } from '@/lib/payments/provider';
-import { cachedProfile, sakafindProvider, type SakafindProfile } from '@/lib/integrations/sakafind';
+import { cachedProfile, checkFare, fetchProfile, retrySameKey, sakafindProvider, SakafindError, walletBlock, type SakafindProfile } from '@/lib/integrations/sakafind';
 import { DEMO_SACCO, DEMO_SACCO_PAYMENTS, JIPAY_PAYBILL, fareFor, isPeak, paybillAccountFor } from '@/lib/demo/demoMode';
 
 interface Props {
@@ -52,7 +52,7 @@ const PayFareDialog = ({ open, onOpenChange, route, vehicle, boardingStage }: Pr
   const [linked, setLinked] = useState<SakafindProfile | null>(() => cachedProfile());
   const savedMethod = (p: SakafindProfile | null): PaymentMethod => {
     const m = read(METHOD_KEY, 'jipay') as PaymentMethod;
-    return m === 'sakafind' && !p?.wallet_open ? 'jipay' : m;
+    return m === 'sakafind' && (!p || walletBlock(p, fare)) ? 'jipay' : m;
   };
   const [method, setMethod] = useState<PaymentMethod>(() => (voucher ? 'prize' : canUsePoints ? 'points' : savedMethod(cachedProfile())));
   // One key per fare: a retry after a dropped connection must find the first payment, not pay again.
@@ -73,7 +73,23 @@ const PayFareDialog = ({ open, onOpenChange, route, vehicle, boardingStage }: Pr
     setLinked(p);
     setError(null);
     setMethod(v ? 'prize' : pts >= pointsForFare(fare) ? 'points' : savedMethod(p));
+    // The balance and this week's limit move with every fare and rent payment: ask again.
+    if (p) {
+      fetchProfile()
+        .then(fresh => setLinked(fresh))
+        .catch(e => { if (e instanceof SakafindError && (e.code === 'SIGNED_OUT' || e.code === 'NOT_AVAILABLE')) { setLinked(null); setWalletNote(e.message); } });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, fare]);
+  const sakafindBlocked = walletBlock(linked, fare);
+  const [walletNote, setWalletNote] = useState<string | null>(null);
+  useEffect(() => { if (open) setWalletNote(null); }, [open]);
+  const [checking, setChecking] = useState(false);
+  const recheck = async () => {
+    if (!receipt) return;
+    setChecking(true);
+    try { setReceipt(await checkFare(receipt)); } catch (e) { setError((e as Error).message); } finally { setChecking(false); }
+  };
 
   // Jipay: the PayBill is fixed, the commuter only enters the account number (prefilled with this vehicle's).
   const [jipayAccount, setJipayAccount] = useState(account);
@@ -104,6 +120,13 @@ const PayFareDialog = ({ open, onOpenChange, route, vehicle, boardingStage }: Pr
     } catch (e) {
       setError((e as Error).message || 'Payment failed. Try again or pay cash.');
       setState('form');
+      if (method === 'sakafind') {
+        // Keep the key only when the request may have arrived (no answer), so trying again
+        // finds that fare; after a clear refusal the next attempt is a new fare.
+        if (!retrySameKey(e)) setFareKey(crypto.randomUUID());
+        if (e instanceof SakafindError && (e.code === 'SIGNED_OUT' || e.code === 'NOT_AVAILABLE')) { setLinked(null); setMethod('jipay'); setWalletNote(e.message); }
+        else fetchProfile().then(setLinked).catch(() => undefined);
+      }
     }
   };
 
@@ -112,10 +135,13 @@ const PayFareDialog = ({ open, onOpenChange, route, vehicle, boardingStage }: Pr
     if (!o) setTimeout(() => { setState('form'); setReceipt(null); setFareKey(crypto.randomUUID()); }, 200);
   };
 
-  const options: { id: PaymentMethod; title: string; sub: string; icon: typeof Wallet }[] = [
+  const options: { id: PaymentMethod; title: string; sub: string; icon: typeof Wallet; disabled?: boolean }[] = [
     ...(canUsePoints ? [{ id: 'points' as const, title: 'Beacon points', sub: `${ptsNeeded} of your ${points} pts. Earned by watching ads.`, icon: Coins }] : []),
     ...(voucher ? [{ id: 'prize' as const, title: 'Beacon Tap prize', sub: `You topped ${voucher.stage}. ${voucher.sponsor} pays this fare.`, icon: Trophy }] : []),
-    ...(linked?.wallet_open ? [{ id: 'sakafind' as const, title: 'JiPay wallet (Sakafind)', sub: `KSh ${(linked.balance_kes ?? 0).toLocaleString()} in wallet · KSh ${linked.allowance_left_kes.toLocaleString()} left this week${linked.demo ? ' · demo' : ''}`, icon: Home }] : []),
+    ...(linked ? [{
+      id: 'sakafind' as const, title: 'JiPay wallet (Sakafind)', icon: Home, disabled: Boolean(sakafindBlocked),
+      sub: sakafindBlocked ?? `KSh ${(linked.balance_kes ?? 0).toLocaleString()} in wallet · KSh ${linked.allowance_left_kes.toLocaleString()} left of your 7-day limit${linked.demo ? ' · demo' : ''}`,
+    }] : []),
     { id: 'jipay', title: 'Jipay', sub: 'Just the account number. Jipay sets the PayBill.', icon: Wallet },
     { id: 'mpesa-paybill', title: 'SACCO PayBill', sub: `${DEMO_SACCO} · PayBill ${paybill}`, icon: Smartphone },
   ];
@@ -141,9 +167,9 @@ const PayFareDialog = ({ open, onOpenChange, route, vehicle, boardingStage }: Pr
 
             <fieldset className="space-y-2" disabled={state === 'paying'}>
               <legend className="text-xs font-medium text-muted-foreground mb-1">Pay with</legend>
-              {options.map(({ id, title, sub, icon: Icon }) => (
-                <label key={id} className={`flex items-center gap-3 rounded-xl border p-3 cursor-pointer ${method === id ? 'border-primary bg-primary/5' : 'border-border'}`}>
-                  <input type="radio" name="pay-method" value={id} checked={method === id} onChange={() => setMethod(id)} className="accent-[hsl(var(--primary))]" />
+              {options.map(({ id, title, sub, icon: Icon, disabled }) => (
+                <label key={id} data-testid={`pay-method-${id}`} className={`flex items-center gap-3 rounded-xl border p-3 ${disabled ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer'} ${method === id ? 'border-primary bg-primary/5' : 'border-border'}`}>
+                  <input type="radio" name="pay-method" value={id} checked={method === id} disabled={disabled} onChange={() => setMethod(id)} className="accent-[hsl(var(--primary))]" />
                   <Icon className="w-5 h-5 text-primary" />
                   <span className="flex-1">
                     <span className="block text-sm font-semibold">{title}</span>
@@ -200,6 +226,7 @@ const PayFareDialog = ({ open, onOpenChange, route, vehicle, boardingStage }: Pr
             )}
 
             {error && <p className="text-xs text-destructive" role="alert">{error}</p>}
+            {walletNote && !error && <p className="text-xs text-muted-foreground" data-testid="wallet-note">{walletNote}</p>}
 
             {method !== 'prize' && method !== 'points' && method !== 'sakafind' && (
               <>
@@ -207,7 +234,7 @@ const PayFareDialog = ({ open, onOpenChange, route, vehicle, boardingStage }: Pr
                 <Input id="pay-phone" value={phone} onChange={e => setPhone(e.target.value)} inputMode="tel" disabled={state === 'paying'} />
               </>
             )}
-            <Button onClick={pay} disabled={state === 'paying' || (method !== 'prize' && method !== 'points' && method !== 'sakafind' && phone.replace(/\D/g, '').length < 9) || (method === 'jipay' && jipayAccount.trim().length < 3)} className="w-full">
+            <Button onClick={pay} disabled={state === 'paying' || (method === 'sakafind' && Boolean(sakafindBlocked)) || (method !== 'prize' && method !== 'points' && method !== 'sakafind' && phone.replace(/\D/g, '').length < 9) || (method === 'jipay' && jipayAccount.trim().length < 3)} className="w-full">
               {state === 'paying'
                 ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> {method === 'prize' ? 'Claiming your prize…' : method === 'points' ? 'Redeeming points…' : method === 'sakafind' ? 'Paying from your wallet…' : 'Check your phone for the M-PESA prompt…'}</>
                 : method === 'prize' ? 'Ride free with your prize' : method === 'points' ? `Pay with ${ptsNeeded} points` : `Pay KSh ${fare}`}
@@ -216,12 +243,12 @@ const PayFareDialog = ({ open, onOpenChange, route, vehicle, boardingStage }: Pr
           </>
         ) : receipt && (
           <div className="text-center space-y-3 py-2">
-            {receipt.status === 'pending'
-              ? <Clock className="w-14 h-14 text-warning mx-auto" />
+            {receipt.status === 'pending' ? <Clock className="w-14 h-14 text-warning mx-auto" />
+              : receipt.status === 'failed' ? <XCircle className="w-14 h-14 text-destructive mx-auto" />
               : <CheckCircle2 className="w-14 h-14 text-accent mx-auto" />}
             <div>
-              <h2 className="text-lg font-bold">{receipt.status === 'pending' ? 'Fare sent, waiting for JiPay' : receipt.method === 'prize' ? 'Fare paid by your prize' : receipt.method === 'points' ? 'Fare paid with points' : 'Fare paid'}</h2>
-              <p className="text-sm text-muted-foreground">{receipt.status === 'pending' ? 'JiPay has not confirmed yet. Check your Sakafind wallet before you board.' : `Show this to the conductor on ${receipt.vehiclePlate}.`}</p>
+              <h2 className="text-lg font-bold" data-testid="receipt-title">{receipt.status === 'pending' ? 'Fare sent, waiting for JiPay' : receipt.status === 'failed' ? 'Fare not paid' : receipt.method === 'prize' ? 'Fare paid by your prize' : receipt.method === 'points' ? 'Fare paid with points' : 'Fare paid'}</h2>
+              <p className="text-sm text-muted-foreground">{receipt.status === 'pending' ? 'JiPay has not confirmed yet. Do not pay again: check again in a moment, or look in your Sakafind wallet.' : receipt.status === 'failed' ? (receipt.failureMessage ?? 'JiPay did not pay this fare. No money was taken.') + ' Pay another way.' : `Show this to the conductor on ${receipt.vehiclePlate}.`}</p>
             </div>
             <div className="rounded-xl bg-muted/40 p-3 text-sm text-left space-y-1">
               <div className="flex justify-between"><span className="text-muted-foreground">Amount</span><span className="font-bold">KSh {receipt.amountKsh}</span></div>
@@ -231,9 +258,16 @@ const PayFareDialog = ({ open, onOpenChange, route, vehicle, boardingStage }: Pr
               <div className="flex justify-between"><span className="text-muted-foreground">Route</span><span>{receipt.routeNumber}</span></div>
               {receipt.method !== 'prize' && receipt.method !== 'points' && receipt.method !== 'sakafind' && <div className="flex justify-between"><span className="text-muted-foreground">Phone</span><span>{receipt.phoneMasked}</span></div>}
               <div className="flex justify-between"><span className="text-muted-foreground">{receipt.method === 'mpesa-paybill' ? 'M-PESA code' : 'Ref'}</span><span className="font-mono text-xs">{receipt.transactionId}</span></div>
+              {receipt.mpesaReceipt && <div className="flex justify-between"><span className="text-muted-foreground">M-PESA code</span><span className="font-mono text-xs">{receipt.mpesaReceipt}</span></div>}
               <div className="flex justify-between"><span className="text-muted-foreground">Time</span><span>{new Date(receipt.paidAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span></div>
             </div>
             {receipt.demo && <p className="text-[11px] text-warning font-medium">Demo receipt. No money moved.</p>}
+            {error && <p className="text-xs text-destructive" role="alert">{error}</p>}
+            {receipt.status === 'pending' && receipt.method === 'sakafind' && (
+              <Button className="w-full" onClick={recheck} disabled={checking} data-testid="check-again">
+                {checking ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <RefreshCw className="w-4 h-4 mr-2" />} Check again
+              </Button>
+            )}
             <Button variant="outline" className="w-full" onClick={() => close(false)}>Done</Button>
           </div>
         )}

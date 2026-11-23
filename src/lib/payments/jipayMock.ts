@@ -46,9 +46,10 @@ export function readReceipts(): Receipt[] {
   }
 }
 
+/** Adds a receipt, or replaces the one with the same transaction id (a pending fare that later confirmed). */
 export function saveReceipt(r: Receipt) {
   try {
-    localStorage.setItem(KEY, JSON.stringify([r, ...readReceipts()].slice(0, 50)));
+    localStorage.setItem(KEY, JSON.stringify([r, ...readReceipts().filter(x => x.transactionId !== r.transactionId)].slice(0, 50)));
   } catch {
     /* storage blocked */
   }

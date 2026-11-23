@@ -122,3 +122,23 @@ describe('deep links', () => {
     expect(parseDeepLink('', nairobiRoutes)).toMatchObject({ route: null, invalid: false });
   });
 });
+
+describe('reports that cannot be trusted', () => {
+  const now = Date.parse('2026-11-23T08:00:00Z');
+  /** A crew phone with a wrong clock stamps reports in the future; they used to read as fresh forever. */
+  it('hides unreadable and far-future timestamps, but allows a little clock drift', () => {
+    expect(freshnessOf('not a date', now)).toBe('hidden');
+    expect(freshnessOf('2026-11-23T09:00:00Z', now)).toBe('hidden');
+    expect(freshnessOf('2026-11-23T08:01:00Z', now)).toBe('fresh');
+  });
+});
+
+describe('fares', () => {
+  it('lists a fare for every route, so none is made up', async () => {
+    const { FARES } = await import('@/data/fares');
+    for (const r of nairobiRoutes) {
+      expect(FARES[r.number], `route ${r.number}`).toBeDefined();
+      expect(FARES[r.number].peak).toBeGreaterThanOrEqual(FARES[r.number].offPeak);
+    }
+  });
+});
