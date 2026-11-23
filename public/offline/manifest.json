@@ -1,0 +1,26 @@
+{
+  "version": "c30ddeb181",
+  "built": "2026-11-23",
+  "source": "Overture Maps 2026-11-18.0 (OpenStreetMap data, ODbL)",
+  "attribution": "\u00a9 OpenStreetMap contributors",
+  "bbox": [
+    36.62,
+    -1.43,
+    37.05,
+    -1.13
+  ],
+  "files": {
+    "nairobi.pmtiles": {
+      "bytes": 4309843,
+      "sha256": "2814adf29c1c3147"
+    },
+    "roads.pack": {
+      "bytes": 2735207,
+      "sha256": "20b0506ed03ccbf2"
+    },
+    "places.pack": {
+      "bytes": 135226,
+      "sha256": "88c2bb4d2d105518"
+    }
+  }
+}

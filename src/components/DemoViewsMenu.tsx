@@ -1,8 +1,9 @@
 import { Link } from 'react-router-dom';
-import { Building2, MonitorPlay, Radio, Sparkles } from 'lucide-react';
+import { Building2, Map, MonitorPlay, Radio, Sparkles } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 
 export const DEMO_VIEWS = [
+  { to: '/map', icon: Map, label: 'Offline map', desc: 'Nairobi map that works without internet: tap a spot, directions, trip to town' },
   { to: '/board', icon: MonitorPlay, label: 'Stage board', desc: 'Big-screen view of matatus heading into the CBD termini' },
   { to: '/crew', icon: Radio, label: 'Crew app', desc: 'Start a shift and share the vehicle location' },
   { to: '/sacco', icon: Building2, label: 'SACCO dashboard', desc: 'Fleet coverage, exceptions and fares by PayBill and Jipay' },

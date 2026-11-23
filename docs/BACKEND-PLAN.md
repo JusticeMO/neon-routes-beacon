@@ -202,6 +202,8 @@ route_variant_stages
 
 ## 6A. Offline Nairobi map pack (MVP)
 
+> **Status (2026-11-23): built.** The pack, tap-to-identify, offline search, A* routing and route animation are in the app at `/map` (see README, "Offline map"). The pack is built from Overture Maps' OpenStreetMap data with `scripts/map-pack/` rather than Planetiler, and is 7 MB rather than the 30–80 MB estimated, because it stops at zoom 14 and leaves out buildings. Leaflet draws it with protomaps-leaflet instead of MapLibre, so the existing map code is unchanged.
+
 **The MVP technical test:** with the phone in airplane mode, a user can (1) open the Nairobi map, (2) tap any spot and be told what it is and what is around it, (3) get a route between two points, and (4) watch a vehicle animate along a route.
 
 The approach is a **prebaked map pack**: one versioned download, built on the server from OpenStreetMap, that holds everything the phone needs to answer those four questions without a network. The backend's job here is the build pipeline, not a runtime service.

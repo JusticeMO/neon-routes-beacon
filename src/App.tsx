@@ -12,6 +12,7 @@ import NotFound from "./pages/NotFound";
 import TerminusBoard from "./pages/TerminusBoard";
 import CrewApp from "./pages/CrewApp";
 import SaccoDashboard from "./pages/SaccoDashboard";
+import OfflineMap from "./pages/OfflineMap";
 import { isDemoMode } from "./lib/demo/demoMode";
 
 const queryClient = new QueryClient();
@@ -29,6 +30,7 @@ const App = () => (
             <Route path="/auth" element={<Auth />} />
             <Route path="/admin" element={<AdminDashboard />} />
             <Route path="/board" element={<TerminusBoard />} />
+            <Route path="/map" element={<OfflineMap />} />
             {/* Demo-only screens: the live crew and SACCO views need the backend. */}
             {isDemoMode && <Route path="/crew" element={<CrewApp />} />}
             {isDemoMode && <Route path="/sacco" element={<SaccoDashboard />} />}

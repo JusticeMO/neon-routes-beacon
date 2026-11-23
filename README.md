@@ -37,6 +37,28 @@ What is simulated: vehicle positions, traffic speed by time of day (evening rush
 
 Map: set `VITE_GOOGLE_MAPS_API_KEY` to use Google Maps with the live traffic layer. With the key, each route is also snapped to real roads (Google driving directions through its stages), so route lines and matatus follow the streets. Enable **Maps JavaScript API** and **Directions API** on the key and restrict it to your site's domain. Without a key the app uses an open-source OpenStreetMap street map (CARTO tiles). Route lines ship already following real roads, routed over OpenStreetMap data with the scripts in `scripts/route-paths/`, so no routing server is needed. Set `VITE_OSRM_URL` to your own OSRM server only if you want routes re-snapped in the browser.
 
+## Offline map (works with no internet)
+
+`/map` is the MVP technical test from the backend plan: open it once with internet, then turn on airplane mode.
+
+- **The map loads offline.** The street map is drawn from a 7 MB Nairobi map pack in `public/offline/`, kept on the phone by a service worker (`public/sw.js`, production builds only, so test with `npm run build && npm run preview`). The commuter map at `/` uses the same offline map.
+- **Tap any spot** to get its estate and road ("Kilimani, on Argwings Kodhek Road"), nearby landmarks with distance and direction, the areas around it, and the nearest Beacon stages.
+- **Search** estates, landmarks, roads and stages by everyday names ("yaya", "KNH", "town").
+- **Directions** by car or on foot: A* over the road graph in a background worker; a cross-town route takes about 30 ms.
+- **Animate a vehicle** along any route found, or along a SACCO route.
+- **Trip to town:** walk to the nearest stage, then ride that route to its CBD terminus.
+
+Rebuild the map pack with the scripts in [`scripts/map-pack/`](scripts/map-pack/README.md).
+
+## Sakafind integration
+
+Sakafind home pages link their nearest matatu stage to Beacon. Two things on the Beacon side:
+
+| What | Where | Use |
+| --- | --- | --- |
+| Deep link | `/map?lat=-1.2989&lng=36.7826&label=Sunrise%20Apartments&from=sakafind` | Opens the offline map at the home, with the walk to the nearest stage, the matatu ride to town and a link to live matatus. Add `&view=spot` to open the "what's around here" card instead. |
+| Stage list | `/api/v1/stages.json` | Every Beacon stage with its position and the routes that stop there (number, name, colour, direction). Generated on each build, CORS open, no vehicle or rider data. |
+
 ### Put the demo online
 
 `npm run build`, then upload `dist/` to any static host. Quickest options:

@@ -1,13 +1,14 @@
 import { Fragment, useEffect, useMemo } from 'react';
 import { Plus, Minus, Navigation } from 'lucide-react';
 import { Button } from './ui/button';
-import { MapContainer, TileLayer, Polyline, CircleMarker, useMap, Tooltip } from 'react-leaflet';
+import { MapContainer, Polyline, CircleMarker, useMap, Tooltip } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import { nairobiRoutes, type Route } from '@/data/routes';
 import { useTheme } from '@/contexts/ThemeContext';
 import { freshnessOf, formatAge, isPubliclyVisible, type VehicleStatus } from '@/lib/tracking/vehicleStatus';
 import { directionLabel, trailBehind } from '@/lib/tracking/routeGeometry';
 import { useRoadPathsVersion } from '@/lib/tracking/roadPaths';
+import OfflineBaseLayer from './OfflineBaseLayer';
 
 interface GoogleMapViewProps {
   selectedRoute: Route | null;
@@ -17,12 +18,6 @@ interface GoogleMapViewProps {
   followedId?: string | null;
   onVehicleClick?: (vehicleId: string) => void;
 }
-
-const TILE_URLS = {
-  bright: 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
-  dark: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
-  live: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
-};
 
 const MapControls = () => {
   const map = useMap();
@@ -39,11 +34,6 @@ const MapControls = () => {
       </Button>
     </div>
   );
-};
-
-const DynamicTileLayer = () => {
-  const { theme } = useTheme();
-  return <TileLayer key={theme} url={TILE_URLS[theme]} attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>' />;
 };
 
 // Auto-fit map to selected route
@@ -153,7 +143,7 @@ const GoogleMapView = ({ selectedRoute, vehicles, now, stageIndex, followedId, o
         attributionControl={true}
         style={{ background: isDark ? 'hsl(220, 15%, 6%)' : 'hsl(210, 20%, 96%)' }}
       >
-        <DynamicTileLayer />
+        <OfflineBaseLayer />
         <FitToRoute route={selectedRoute} />
         <GlowFilter />
         <MapControls />
