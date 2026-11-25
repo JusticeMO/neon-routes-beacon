@@ -4,3 +4,7 @@
 
 /sw.js
   Cache-Control: no-cache
+
+# Only Beacon itself and Sakafind (its tenant Matatus tab) may show Beacon in a frame.
+/*
+  Content-Security-Policy: frame-ancestors 'self' https://sakafind.com https://www.sakafind.com https://jengasafe.com https://www.jengasafe.com

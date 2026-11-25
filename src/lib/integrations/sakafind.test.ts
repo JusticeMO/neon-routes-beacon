@@ -70,6 +70,62 @@ describe('Continue with Sakafind', () => {
     expect(JSON.parse(String(init.body))).toMatchObject({ grant_type: 'authorization_code', code: 'abc', redirect_uri: 'https://beacon.example.com/connect/sakafind' });
   });
 
+  /**
+   * Inside Sakafind's Matatus tab Beacon can't go to Sakafind's consent page (Sakafind won't
+   * open in a frame), so it asks the page around it. Only Sakafind's own page, directly
+   * around this frame, may answer: anything else posting a code could link a stranger's
+   * wallet to this phone.
+   */
+  describe('inside Sakafind', () => {
+    const framed = () => {
+      const listeners: Array<(e: unknown) => void> = [];
+      const parent = { postMessage: vi.fn() };
+      vi.stubGlobal('window', {
+        location: { origin: 'https://beacon.example.com' }, parent,
+        addEventListener: (_: string, fn: (e: unknown) => void) => listeners.push(fn),
+        removeEventListener: (_: string, fn: (e: unknown) => void) => listeners.splice(listeners.indexOf(fn), 1),
+      });
+      const post = (data: unknown, origin = 'https://sakafind.com', source: unknown = parent) => [...listeners].forEach(fn => fn({ data, origin, source }));
+      return { parent, post, listeners };
+    };
+    const profile = { first_name: 'Achieng', wallet_open: true, balance_kes: 900, weekly_allowance_kes: 500, spent_this_week_kes: 0, allowance_left_kes: 500, per_fare_max_kes: 300, fee_kes: 0 };
+
+    it('asks Sakafind only, takes the code from Sakafind only, and swaps it with its own verifier', async () => {
+      const s = await live();
+      const { parent, post, listeners } = framed();
+      const fetchMock = vi.fn(async () => new Response(JSON.stringify({ success: true, data: { access_token: 'bcn_x', profile } })));
+      vi.stubGlobal('fetch', fetchMock);
+      const done = s.connectViaParent();
+      await vi.waitFor(() => expect(parent.postMessage).toHaveBeenCalled());
+      const [ask, target] = parent.postMessage.mock.calls[0];
+      expect(target).toBe('https://sakafind.com');
+      expect(ask).toMatchObject({ type: 'beacon:connect', redirect_uri: 'https://beacon.example.com/connect/sakafind', code_challenge_method: 'S256' });
+      const { verifier } = JSON.parse(sessionStorage.getItem('beacon.sakafind.pending')!);
+      expect(JSON.stringify(ask)).not.toContain(verifier);
+
+      post({ type: 'beacon:connect-result', state: ask.state, code: 'evil' }, 'https://evil.example');
+      post({ type: 'beacon:connect-result', state: ask.state, code: 'evil' }, 'https://sakafind.com', {});
+      post({ type: 'beacon:connect-result', state: 'other', code: 'evil' });
+      expect(listeners).toHaveLength(1);
+      post({ type: 'beacon:connect-result', state: ask.state, code: 'abc' });
+
+      expect(await done).toMatchObject({ first_name: 'Achieng' });
+      expect(JSON.parse(String((fetchMock.mock.calls[0] as unknown as [string, RequestInit])[1].body))).toMatchObject({ code: 'abc', code_verifier: verifier });
+      expect(parent.postMessage).toHaveBeenLastCalledWith({ type: 'beacon:connected' }, 'https://sakafind.com');
+      expect(s.isConnected()).toBe(true);
+    });
+
+    it('says so when the tenant chooses Not now in Sakafind', async () => {
+      const s = await live();
+      const { parent, post } = framed();
+      const done = s.connectViaParent();
+      await vi.waitFor(() => expect(parent.postMessage).toHaveBeenCalled());
+      post({ type: 'beacon:connect-result', state: parent.postMessage.mock.calls[0][0].state, error: 'access_denied' });
+      await expect(done).rejects.toThrow(/chose not to connect/);
+      expect(s.isConnected()).toBe(false);
+    });
+  });
+
   it('pays a fare with one Idempotency-Key and reports a fare JiPay has not confirmed as pending', async () => {
     vi.useFakeTimers();
     const s = await live();

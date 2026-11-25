@@ -2,8 +2,9 @@ import { useEffect, useState } from 'react';
 import { Home, Loader2, LogOut, Wallet } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
-  cachedProfile, connectDemo, connectUrl, disconnect, fetchProfile, sakafindLive, type SakafindProfile,
+  cachedProfile, connectDemo, connectUrl, connectViaParent, disconnect, fetchProfile, sakafindLive, type SakafindProfile,
 } from '@/lib/integrations/sakafind';
+import { isEmbedded } from '@/lib/embed';
 
 const ksh = (n: number | null | undefined) => `KSh ${(n ?? 0).toLocaleString()}`;
 
@@ -12,6 +13,7 @@ const SakafindCard = () => {
   const [profile, setProfile] = useState<SakafindProfile | null>(() => cachedProfile());
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const embedded = isEmbedded();
 
   useEffect(() => {
     fetchProfile().then(p => setProfile(p)).catch(e => {
@@ -25,6 +27,17 @@ const SakafindCard = () => {
     setError(null);
     if (!sakafindLive) { setProfile(connectDemo()); return; }
     setBusy(true);
+    if (embedded) {
+      // Inside Sakafind: its own consent step opens over this map, and the answer comes back here.
+      try {
+        setProfile(await connectViaParent());
+      } catch (e) {
+        setError((e as Error).message || 'Could not connect Sakafind. Try again.');
+      } finally {
+        setBusy(false);
+      }
+      return;
+    }
     try {
       window.location.assign(await connectUrl('/'));
     } catch {

@@ -61,14 +61,45 @@ export async function pkceChallenge(verifier: string): Promise<string> {
 }
 
 /** The address of Sakafind's consent page; remembers the verifier and state for the way back. */
-export async function connectUrl(returnTo = '/'): Promise<string> {
+/** Starts a sign-in: keeps the verifier here and returns what Sakafind's consent step needs. */
+export async function connectRequest(returnTo = '/'): Promise<Record<string, string>> {
   const verifier = randomString(48);
   const state = randomString(16);
   store.set(PENDING_KEY, JSON.stringify({ verifier, state, returnTo }), sessionStorage);
-  const q = new URLSearchParams({
-    redirect_uri: redirectUri(), state, code_challenge: await pkceChallenge(verifier), code_challenge_method: 'S256',
+  return { redirect_uri: redirectUri(), state, code_challenge: await pkceChallenge(verifier), code_challenge_method: 'S256' };
+}
+
+export async function connectUrl(returnTo = '/'): Promise<string> {
+  return `${SAKAFIND_URL}/connect/beacon?${new URLSearchParams(await connectRequest(returnTo))}`;
+}
+
+/**
+ * "Continue with Sakafind" when Beacon is shown inside Sakafind's Matatus tab. Sakafind
+ * won't open inside a frame, so instead of leaving, Beacon asks the Sakafind page around
+ * it, which shows its own consent step and posts back the one-time code. Only the page
+ * on Sakafind's address, directly around this frame, is asked or listened to. The code
+ * is useless without the verifier, which never leaves this frame.
+ */
+export async function connectViaParent(timeoutMs = 10 * 60_000): Promise<SakafindProfile> {
+  const origin = new URL(SAKAFIND_URL).origin;
+  const req = await connectRequest('/');
+  const answer = await new Promise<URLSearchParams>((resolve, reject) => {
+    const done = (fn: () => void) => { window.removeEventListener('message', onMessage); clearTimeout(timer); fn(); };
+    const onMessage = (e: MessageEvent) => {
+      const d = e.data as Record<string, unknown> | null;
+      if (e.origin !== origin || e.source !== window.parent || d?.type !== 'beacon:connect-result' || d.state !== req.state) return;
+      const out = new URLSearchParams({ state: String(d.state) });
+      if (typeof d.code === 'string') out.set('code', d.code);
+      if (d.error === 'access_denied') out.set('error', 'access_denied');
+      done(() => resolve(out));
+    };
+    const timer = setTimeout(() => done(() => reject(new SakafindError('STATE', 'Sakafind did not answer. Tap Continue with Sakafind again.'))), timeoutMs);
+    window.addEventListener('message', onMessage);
+    window.parent.postMessage({ type: 'beacon:connect', ...req }, origin);
   });
-  return `${SAKAFIND_URL}/connect/beacon?${q}`;
+  const { profile } = await completeConnect(answer);
+  window.parent.postMessage({ type: 'beacon:connected' }, origin);
+  return profile;
 }
 
 const NO_CONNECTION = 'No connection to Sakafind. Check your data and try again. If the fare already went through, trying again will not pay twice.';
