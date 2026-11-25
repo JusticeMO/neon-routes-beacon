@@ -13,18 +13,18 @@
 
 ## What was removed to make it independent (this PR)
 
-The app was generated on Lovable and pointed at a Lovable Cloud database.
+The app was first generated on a hosted app builder and pointed at that builder's own cloud database.
 
-- `.env` with the Lovable Cloud project URL and key (removed from git; `.env.example` added, `.env` ignored).
-- `previewAuthStorage.ts`, which brokered login sessions to the Lovable editor; replaced with plain `localStorage`.
-- `lovable-tagger` dev dependency and its Vite plugin.
-- Lovable README, Open Graph images and Twitter handle.
-- `.lovable/` folder (the build spec moved to `docs/build-specification.md`).
+- `.env` with the builder's cloud project URL and key (removed from git; `.env.example` added, `.env` ignored).
+- `previewAuthStorage.ts`, which brokered login sessions to the builder's editor; replaced with plain `localStorage`.
+- The builder's component-tagger dev dependency and its Vite plugin.
+- The builder's README, Open Graph images, Twitter handle and favicon (now Beacon's own icon).
+- The builder's settings folder (the build spec moved to `docs/build-specification.md`) and its placeholder image.
 - Bun lockfiles; npm `package-lock.json` regenerated as the single lockfile.
 - `supabase/config.toml` project id reset to a neutral `beacon`.
 - The app now starts with no backend: the commuter screens run on sample data and sign-in shows a setup notice.
 
-Data in the old Lovable Cloud database is not migrated. The schema is in `supabase/migrations` and can be applied to any Supabase or Postgres project. If there is real data there (SACCOs, vehicles), export it from Lovable before that project is shut down.
+Data in the old hosted database is not migrated. The schema is in `supabase/migrations` and can be applied to any Supabase or Postgres project. If there is real data there (SACCOs, vehicles), export it from the builder before that project is shut down.
 
 ## Target architecture
 
