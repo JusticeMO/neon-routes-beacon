@@ -17,11 +17,17 @@ import { coverage } from '@/lib/tracking/vehicleStatus';
 import { toast } from 'sonner';
 import { Users, MapPin, ChevronRight, Banknote } from 'lucide-react';
 
+const TABS = ['home', 'routes', 'alerts', 'profile'];
+
 const Index = () => {
   const [showSplash, setShowSplash] = useState(true);
   const location = useLocation();
   // Coming back from "Continue with Sakafind" opens the profile, where the wallet now shows.
-  const [activeTab, setActiveTab] = useState(() => (location.state as { tab?: string } | null)?.tab ?? 'home');
+  // Sakafind's Matatus tab links to ?tab=profile to connect the wallet. Unknown tabs open home.
+  const [activeTab, setActiveTab] = useState(() => {
+    const asked = (location.state as { tab?: string } | null)?.tab ?? new URLSearchParams(window.location.search).get('tab');
+    return asked && TABS.includes(asked) ? asked : 'home';
+  });
   // Deep links: ?route=<number> or ?stage=<stage id>. Bad ids fall back to the selector.
   const initial = useMemo(() => parseDeepLink(window.location.search, nairobiRoutes), []);
   const [selectedRoute, setSelectedRoute] = useState<Route | null>(initial.route);
