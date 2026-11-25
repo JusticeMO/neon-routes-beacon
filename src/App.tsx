@@ -9,6 +9,12 @@ import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import AdminDashboard from "./pages/AdminDashboard";
 import NotFound from "./pages/NotFound";
+import TerminusBoard from "./pages/TerminusBoard";
+import CrewApp from "./pages/CrewApp";
+import SaccoDashboard from "./pages/SaccoDashboard";
+import OfflineMap from "./pages/OfflineMap";
+import SakafindCallback from "./pages/SakafindCallback";
+import { isDemoMode } from "./lib/demo/demoMode";
 
 const queryClient = new QueryClient();
 
@@ -24,6 +30,12 @@ const App = () => (
             <Route path="/" element={<Index />} />
             <Route path="/auth" element={<Auth />} />
             <Route path="/admin" element={<AdminDashboard />} />
+            <Route path="/board" element={<TerminusBoard />} />
+            <Route path="/map" element={<OfflineMap />} />
+            <Route path="/connect/sakafind" element={<SakafindCallback />} />
+            {/* Demo-only screens: the live crew and SACCO views need the backend. */}
+            {isDemoMode && <Route path="/crew" element={<CrewApp />} />}
+            {isDemoMode && <Route path="/sacco" element={<SaccoDashboard />} />}
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>

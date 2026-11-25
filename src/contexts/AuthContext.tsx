@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { User, Session } from '@supabase/supabase-js';
-import { supabase } from '@/integrations/supabase/client';
+import { supabase, isBackendConfigured } from '@/integrations/supabase/client';
 
 type AppRole = 'admin' | 'sacco_manager' | 'driver' | 'passenger';
 
@@ -34,6 +34,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   useEffect(() => {
+    // No backend configured: run as a signed-out visitor (public screens only).
+    if (!isBackendConfigured) {
+      setLoading(false);
+      return;
+    }
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (_event, session) => {
         setSession(session);

@@ -1,0 +1,180 @@
+{
+ "46": [
+  {
+   "name": "Kencom",
+   "lat": -1.2858,
+   "lng": 36.8253,
+   "road": "Moi Avenue"
+  },
+  {
+   "name": "Kenyatta Ave",
+   "lat": -1.2878,
+   "lng": 36.818,
+   "road": "Kenyatta Avenue"
+  },
+  {
+   "name": "Uhuru Highway",
+   "lat": -1.293,
+   "lng": 36.817,
+   "road": "Uhuru Highway"
+  },
+  {
+   "name": "Kenyatta Hospital",
+   "lat": -1.3,
+   "lng": 36.807,
+   "road": "Ngong Road"
+  },
+  {
+   "name": "Prestige Plaza",
+   "lat": -1.2995,
+   "lng": 36.787,
+   "road": "Ngong Road"
+  },
+  {
+   "name": "Dagoretti Corner",
+   "lat": -1.2988,
+   "lng": 36.7605,
+   "road": "Ngong Road"
+  },
+  {
+   "name": "Naivasha Rd",
+   "lat": -1.293,
+   "lng": 36.752,
+   "road": "Naivasha Road"
+  },
+  {
+   "name": "Kawangware",
+   "lat": -1.287,
+   "lng": 36.743
+  }
+ ],
+ "34": [
+  {
+   "name": "Tom Mboya St",
+   "lat": -1.2836,
+   "lng": 36.8251,
+   "road": "Tom Mboya Street"
+  },
+  {
+   "name": "Globe Roundabout",
+   "lat": -1.278,
+   "lng": 36.8215
+  },
+  {
+   "name": "Pangani",
+   "lat": -1.273,
+   "lng": 36.83,
+   "road": "Murang'a Road"
+  },
+  {
+   "name": "Muthaiga Rdbt",
+   "lat": -1.262,
+   "lng": 36.836,
+   "road": "Thika Road"
+  },
+  {
+   "name": "Allsops",
+   "lat": -1.2445,
+   "lng": 36.859,
+   "road": "Thika Road"
+  },
+  {
+   "name": "Roysambu (TRM)",
+   "lat": -1.2185,
+   "lng": 36.886,
+   "road": "Thika Road"
+  },
+  {
+   "name": "Kasarani Stadium",
+   "lat": -1.2235,
+   "lng": 36.8935,
+   "road": "Kasarani Mwiki Road"
+  }
+ ],
+ "15": [
+  {
+   "name": "Railway Station",
+   "lat": -1.2905,
+   "lng": 36.8255,
+   "road": "Haile Selassie Avenue"
+  },
+  {
+   "name": "Haile Selassie",
+   "lat": -1.2925,
+   "lng": 36.8205,
+   "road": "Haile Selassie Avenue"
+  },
+  {
+   "name": "Nyayo Stadium",
+   "lat": -1.303,
+   "lng": 36.824,
+   "road": "Langata Road"
+  },
+  {
+   "name": "T-Mall",
+   "lat": -1.3125,
+   "lng": 36.817,
+   "road": "Langata Road"
+  },
+  {
+   "name": "Wilson Airport",
+   "lat": -1.32,
+   "lng": 36.8115,
+   "road": "Langata Road"
+  },
+  {
+   "name": "Langata Rd",
+   "lat": -1.328,
+   "lng": 36.799,
+   "road": "Langata Road"
+  },
+  {
+   "name": "Galleria Mall",
+   "lat": -1.343,
+   "lng": 36.7645,
+   "road": "Langata Road"
+  },
+  {
+   "name": "Karen Shopping Centre",
+   "lat": -1.3196,
+   "lng": 36.7083
+  }
+ ],
+ "108": [
+  {
+   "name": "University Way",
+   "lat": -1.28,
+   "lng": 36.817,
+   "road": "University Way"
+  },
+  {
+   "name": "Uhuru Highway",
+   "lat": -1.277,
+   "lng": 36.815,
+   "road": "Uhuru Highway"
+  },
+  {
+   "name": "Museum Hill",
+   "lat": -1.2752,
+   "lng": 36.814,
+   "road": "Waiyaki Way"
+  },
+  {
+   "name": "Chiromo",
+   "lat": -1.2705,
+   "lng": 36.809,
+   "road": "Waiyaki Way"
+  },
+  {
+   "name": "Westlands",
+   "lat": -1.2645,
+   "lng": 36.804,
+   "road": "Waiyaki Way"
+  },
+  {
+   "name": "Sarit Centre",
+   "lat": -1.2606,
+   "lng": 36.8019
+  }
+ ]
+}

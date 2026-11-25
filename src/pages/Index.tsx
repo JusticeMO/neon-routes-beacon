@@ -1,25 +1,68 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect, useMemo } from 'react';
 import SplashScreen from '../components/SplashScreen';
-import GoogleMapView from '../components/GoogleMapView';
+import BeaconMap from '../components/BeaconMap';
 import SearchBar from '../components/SearchBar';
 import BottomNav from '../components/BottomNav';
 import RouteBottomSheet from '../components/RouteBottomSheet';
 import ThemeToggle from '../components/ThemeToggle';
 import { nairobiRoutes, type Route } from '@/data/routes';
-import { Clock, Users, MapPin, ChevronRight, Banknote, Bell, Shield, Star, Settings, HelpCircle } from 'lucide-react';
+import { sampleVehicles } from '@/data/sampleVehicles';
+import DemoViewsMenu, { DEMO_VIEWS } from '@/components/DemoViewsMenu';
+import { readReceipts } from '@/lib/payments/jipayMock';
+import { Link, useLocation } from 'react-router-dom';
+import SakafindCard from '@/components/sakafind/SakafindCard';
+import { useAllVehicles, useNow, useRouteVehicles } from '@/hooks/useRouteVehicles';
+import { parseDeepLink, stageId } from '@/lib/tracking/deepLink';
+import { coverage } from '@/lib/tracking/vehicleStatus';
+import { toast } from 'sonner';
+import { Users, MapPin, ChevronRight, Banknote } from 'lucide-react';
+
+const TABS = ['home', 'routes', 'alerts', 'profile'];
 
 const Index = () => {
   const [showSplash, setShowSplash] = useState(true);
-  const [activeTab, setActiveTab] = useState('home');
-  const [selectedRoute, setSelectedRoute] = useState<Route | null>(null);
+  const location = useLocation();
+  // Coming back from "Continue with Sakafind" opens the profile, where the wallet now shows.
+  // Sakafind's Matatus tab links to ?tab=profile to connect the wallet. Unknown tabs open home.
+  const [activeTab, setActiveTab] = useState(() => {
+    const asked = (location.state as { tab?: string } | null)?.tab ?? new URLSearchParams(window.location.search).get('tab');
+    return asked && TABS.includes(asked) ? asked : 'home';
+  });
+  // Deep links: ?route=<number> or ?stage=<stage id>. Bad ids fall back to the selector.
+  const initial = useMemo(() => parseDeepLink(window.location.search, nairobiRoutes), []);
+  const [selectedRoute, setSelectedRoute] = useState<Route | null>(initial.route);
+  // Default to the town terminus, where end-of-day queues form.
+  const [stageIndex, setStageIndex] = useState(initial.stage?.stageIndex ?? 0);
+  const [followedId, setFollowedId] = useState<string | null>(null);
+  const deepLinked = Boolean(initial.route);
+  useEffect(() => {
+    if (deepLinked) setShowSplash(false);
+    if (initial.invalid) toast.message("We couldn't find that stage or route. Pick one below.");
+  }, [deepLinked, initial.invalid]);
+
+  const now = useNow(1000);
+  const routeVehicles = useRouteVehicles(selectedRoute, now);
+  const allVehicles = useAllVehicles(now);
+  const mapVehicles = selectedRoute ? routeVehicles : allVehicles;
+
+  // Keep the URL shareable as the commuter picks a route and stage.
+  useEffect(() => {
+    const url = selectedRoute ? `?stage=${stageId(selectedRoute, stageIndex)}` : window.location.pathname;
+    window.history.replaceState(null, '', url);
+  }, [selectedRoute, stageIndex]);
 
   const handleRouteSelect = useCallback((routeNumber: string) => {
     const route = nairobiRoutes.find(r => r.number === routeNumber);
-    if (route) setSelectedRoute(route);
+    if (route) {
+      setSelectedRoute(route);
+      setStageIndex(0);
+      setFollowedId(null);
+    }
   }, []);
 
   const handleClearRoute = useCallback(() => {
     setSelectedRoute(null);
+    setFollowedId(null);
   }, []);
 
   if (showSplash) {
@@ -32,7 +75,7 @@ const Index = () => {
         return (
           <div className="relative h-full flex flex-col">
             {/* Search bar */}
-            <div className="absolute top-4 left-4 right-4 z-30">
+            <div className="absolute top-4 left-4 right-4 z-40">
               <SearchBar
                 onRouteSelect={handleRouteSelect}
                 onClear={handleClearRoute}
@@ -40,19 +83,42 @@ const Index = () => {
               />
             </div>
 
-            {/* Theme toggle */}
+            {/* Theme toggle and demo views */}
             <div className="absolute top-[72px] left-4 z-30">
               <ThemeToggle />
             </div>
+            <div className="absolute top-[76px] right-4 z-30">
+              <DemoViewsMenu />
+            </div>
 
             {/* Map */}
-            <div className="flex-1 relative" style={{ minHeight: 0 }}>
-              <GoogleMapView selectedRoute={selectedRoute} />
+            <div className="flex-1 relative isolate" style={{ minHeight: 0 }}>
+              <BeaconMap
+                selectedRoute={selectedRoute}
+                vehicles={mapVehicles}
+                now={now}
+                stageIndex={selectedRoute ? stageIndex : undefined}
+                followedId={followedId}
+                onVehicleClick={id => {
+                  const v = mapVehicles.find(x => x.vehicleId === id);
+                  if (v && !selectedRoute) handleRouteSelect(v.routeId);
+                  setFollowedId(id);
+                }}
+              />
             </div>
 
             {/* Route bottom sheet */}
             {selectedRoute && (
-              <RouteBottomSheet route={selectedRoute} onClose={handleClearRoute} />
+              <RouteBottomSheet
+                route={selectedRoute}
+                vehicles={routeVehicles}
+                now={now}
+                stageIndex={stageIndex}
+                onStageChange={i => { setStageIndex(i); setFollowedId(null); }}
+                followedId={followedId}
+                onFollow={setFollowedId}
+                onClose={handleClearRoute}
+              />
             )}
           </div>
         );
@@ -62,13 +128,10 @@ const Index = () => {
           <div className="p-4 space-y-3 pb-24 overflow-y-auto h-full">
             <div className="pt-2 mb-5">
               <h2 className="text-xl font-bold">Nearby Routes</h2>
-              <p className="text-muted-foreground text-sm mt-0.5">Tap a route to track it live</p>
+              <p className="text-muted-foreground text-sm mt-0.5">Tap a route to see matatus on their way to your stage. Sample data for now.</p>
             </div>
             {nairobiRoutes.map(route => {
-              const eta = ['3 min', '7 min', '12 min', '5 min'][route.id - 1];
-              const fare = ['KSh 60', 'KSh 80', 'KSh 100', 'KSh 50'][route.id - 1];
-              const seats = ['Few Seats', 'Full', 'Available', 'Few Seats'][route.id - 1];
-              const seatsColor = seats === 'Full' ? 'text-destructive' : seats === 'Available' ? 'text-accent' : 'text-warning';
+              const cov = coverage(sampleVehicles(route, now), now);
               return (
                 <button
                   key={route.id}
@@ -83,12 +146,11 @@ const Index = () => {
                       <div className="font-semibold text-sm">{route.name}</div>
                       <div className="flex items-center gap-3 mt-1">
                         <span className="text-xs text-muted-foreground flex items-center gap-1">
-                          <Clock className="w-3 h-3" />{eta}
+                          <MapPin className="w-3 h-3" />{route.stops.length} stages
                         </span>
                         <span className="text-xs text-muted-foreground flex items-center gap-1">
-                          <Banknote className="w-3 h-3" />{fare}
+                          <Users className="w-3 h-3" />{cov.reporting} of {cov.onShift} sharing location
                         </span>
-                        <span className={`text-xs font-medium ${seatsColor}`}>{seats}</span>
                       </div>
                     </div>
                     <ChevronRight className="w-4 h-4 text-muted-foreground" />
@@ -141,56 +203,67 @@ const Index = () => {
           </div>
         );
 
-      case 'profile':
+      case 'profile': {
+        const receipts = readReceipts();
+        const spent = receipts.filter(r => r.method !== 'prize' && r.method !== 'points' && r.status !== 'failed').reduce((t, r) => t + r.amountKsh, 0);
         return (
           <div className="p-4 pb-24 overflow-y-auto h-full">
-            <div className="pt-2 mb-6">
-              <div className="flex items-center gap-4">
-                <div className="w-14 h-14 bg-primary/15 rounded-full flex items-center justify-center ring-2 ring-primary/30">
-                  <span className="text-lg font-bold text-primary">JD</span>
-                </div>
-                <div>
-                  <h2 className="text-lg font-bold">John Doe</h2>
-                  <p className="text-xs text-muted-foreground">Nairobi Commuter</p>
-                </div>
+            <div className="pt-2 mb-6 flex items-center gap-4">
+              <div className="w-14 h-14 bg-primary/15 rounded-full flex items-center justify-center ring-2 ring-primary/30">
+                <span className="text-lg font-bold text-primary">DC</span>
+              </div>
+              <div>
+                <h2 className="text-lg font-bold">Demo commuter</h2>
+                <p className="text-xs text-muted-foreground">M-PESA and Jipay (demo)</p>
               </div>
             </div>
 
-            {/* Stats row */}
-            <div className="grid grid-cols-3 gap-3 mb-5">
+            <SakafindCard />
+
+            <div className="grid grid-cols-2 gap-3 mb-5">
               <div className="bg-card rounded-2xl p-3 text-center border border-border/30">
-                <div className="text-xl font-bold text-primary">47</div>
-                <div className="text-[10px] text-muted-foreground mt-0.5">Trips</div>
+                <div className="text-xl font-bold text-primary">{receipts.length}</div>
+                <div className="text-[10px] text-muted-foreground mt-0.5">Fares paid in the app</div>
               </div>
               <div className="bg-card rounded-2xl p-3 text-center border border-border/30">
-                <div className="text-xl font-bold text-accent">2,340</div>
-                <div className="text-[10px] text-muted-foreground mt-0.5">Points</div>
-              </div>
-              <div className="bg-card rounded-2xl p-3 text-center border border-border/30">
-                <div className="text-xl font-bold text-warning">KSh 4.2k</div>
-                <div className="text-[10px] text-muted-foreground mt-0.5">Saved</div>
+                <div className="text-xl font-bold text-accent">KSh {spent.toLocaleString()}</div>
+                <div className="text-[10px] text-muted-foreground mt-0.5">Total spent</div>
               </div>
             </div>
 
-            {/* Menu items */}
+            <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Receipts</h3>
+            <div className="bg-card rounded-2xl border border-border/30 divide-y divide-border/20 mb-5">
+              {receipts.length === 0 && (
+                <p className="p-4 text-sm text-muted-foreground">No fares yet. Follow a matatu on the map and tap Pay to try a demo M-PESA PayBill or Jipay payment.</p>
+              )}
+              {receipts.slice(0, 10).map(r => (
+                <div key={r.transactionId} className="px-4 py-3 flex items-center gap-3">
+                  <Banknote className="w-4 h-4 text-muted-foreground" />
+                  <div className="flex-1 min-w-0">
+                    <div className="text-sm font-medium">{r.vehiclePlate} · route {r.routeNumber} · {r.provider}</div>
+                    <div className="text-[11px] text-muted-foreground">{r.boardingStage} · {new Date(r.paidAt).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })} · <span className="font-mono">{r.transactionId}</span></div>
+                  </div>
+                  <span className="text-sm font-semibold text-right">KSh {r.amountKsh}{r.status !== 'confirmed' && <span className={`block text-[10px] font-normal ${r.status === 'failed' ? 'text-destructive' : 'text-warning'}`}>{r.status === 'failed' ? 'not paid' : 'pending'}</span>}</span>
+                </div>
+              ))}
+            </div>
+
+            <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Explore the demo</h3>
             <div className="bg-card rounded-2xl border border-border/30 divide-y divide-border/20">
-              {[
-                { icon: Star, label: 'Saved Routes', value: '2' },
-                { icon: Bell, label: 'Notifications', value: '' },
-                { icon: Shield, label: 'Safety', value: '' },
-                { icon: Settings, label: 'Settings', value: '' },
-                { icon: HelpCircle, label: 'Help & Support', value: '' },
-              ].map(({ icon: Icon, label, value }) => (
-                <button key={label} className="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-muted/20 transition-colors">
-                  <Icon className="w-4 h-4 text-muted-foreground" />
-                  <span className="flex-1 text-sm text-left">{label}</span>
-                  {value && <span className="text-xs text-muted-foreground bg-muted/30 px-2 py-0.5 rounded-full">{value}</span>}
+              {DEMO_VIEWS.map(({ to, icon: Icon, label, desc }) => (
+                <Link key={to} to={to} className="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-muted/20 transition-colors">
+                  <Icon className="w-4 h-4 text-primary" />
+                  <span className="flex-1 text-left">
+                    <span className="block text-sm">{label}</span>
+                    <span className="block text-[11px] text-muted-foreground">{desc}</span>
+                  </span>
                   <ChevronRight className="w-4 h-4 text-muted-foreground/50" />
-                </button>
+                </Link>
               ))}
             </div>
           </div>
         );
+      }
 
       default:
         return null;
