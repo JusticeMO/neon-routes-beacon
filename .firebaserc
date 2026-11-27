@@ -1,0 +1,12 @@
+{
+  "projects": {
+    "default": "jengasafe-9508b"
+  },
+  "targets": {
+    "jengasafe-9508b": {
+      "hosting": {
+        "beacon": ["sakafind-beacon"]
+      }
+    }
+  }
+}

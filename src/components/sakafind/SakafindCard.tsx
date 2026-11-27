@@ -47,6 +47,10 @@ const SakafindCard = () => {
     }
   };
 
+  // Inside Sakafind's Matatus tab with wallet fares switched off, a demo wallet would only
+  // confuse a real tenant, so the card stays out of the way until Sakafind is connected.
+  if (embedded && !sakafindLive && !profile) return null;
+
   if (!profile) {
     return (
       <div className="bg-card rounded-2xl border border-border/30 p-4 mb-5 space-y-3" data-testid="sakafind-card">
