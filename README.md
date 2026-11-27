@@ -71,6 +71,9 @@ Profile has **Continue with Sakafind**. The commuter picks a weekly fare limit o
 
 ### Put the demo online
 
+The live copy is hosted on Firebase at https://beacon.sakafind.com: see [docs/HOSTING.md](docs/HOSTING.md). For a quick one-off copy elsewhere:
+
+
 `npm run build`, then upload `dist/` to any static host. Quickest options:
 - **Netlify Drop**: drag the `dist` folder onto https://app.netlify.com/drop. `public/_redirects` already handles page links like `/board`.
 - **Vercel**: import the repo; `vercel.json` handles page links. Build command `npm run build`, output `dist`.

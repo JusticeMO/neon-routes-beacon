@@ -1,0 +1,69 @@
+name: Deploy Beacon
+
+# Builds Beacon and puts it live on Firebase Hosting, on the "sakafind-beacon" site in
+# Sakafind's Firebase project (jengasafe-9508b), served at https://beacon.sakafind.com.
+#
+# One-time setup (see docs/HOSTING.md):
+#   1. Firebase console > Hosting > Add another site > "sakafind-beacon".
+#   2. On that site, Add custom domain > beacon.sakafind.com, and add the DNS records it shows.
+#   3. In this repository, Settings > Secrets and variables > Actions, add the secret
+#      FIREBASE_SERVICE_ACCOUNT with the same service-account JSON the Sakafind repo uses.
+# Until the secret exists, the deploy step is skipped and only the checks run.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-beacon-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+      - name: Build
+        run: npm run build
+        env:
+          # Wallet fares stay off: with no Sakafind address the "Continue with Sakafind"
+          # card is hidden inside Sakafind's Matatus tab, and on Beacon's own page it
+          # links a demo wallet where no money moves. Set these repository variables
+          # only when JiPay is live and Sakafind's BEACON_CONNECT_ENABLED is true.
+          VITE_SAKAFIND_URL: ${{ vars.VITE_SAKAFIND_URL }}
+          VITE_SAKAFIND_API: ${{ vars.VITE_SAKAFIND_API }}
+          VITE_GOOGLE_MAPS_API_KEY: ${{ vars.VITE_GOOGLE_MAPS_API_KEY }}
+
+      - name: Check the deploy secret
+        id: secret
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+        env:
+          SA: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: |
+          if [ -n "$SA" ]; then echo "ready=true" >> "$GITHUB_OUTPUT"; else
+            echo "::notice::FIREBASE_SERVICE_ACCOUNT is not set yet, so Beacon was built but not deployed."; fi
+
+      - name: Deploy to Firebase Hosting (live)
+        if: steps.secret.outputs.ready == 'true'
+        uses: FirebaseExtended/action-hosting-deploy@500ac625ca2dd40cbd15f7659af953801858032a # v0
+        with:
+          repoToken: ${{ secrets.GITHUB_TOKEN }}
+          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          channelId: live
+          projectId: jengasafe-9508b
+          target: beacon
+          # Same pin as the Sakafind deploy: newer firebase-tools needs a role our
+          # service account does not have (403 serviceusage.services.get).
+          firebaseToolsVersion: '15.34.0'
